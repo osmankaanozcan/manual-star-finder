@@ -100,3 +100,4 @@ print(f"Adım-2: Polaris'ten tam [{dikey_olcum}] kadar {dikey_yon} bak.")
 print(f"Adım-3: Sonra o noktadan [{yatay_olcum}] kadar {yatay_yon} doğru kay.")
 print(f"Tebrikler , {x.upper()} tam olarak baktığın o bölgede.")
 
+#.
