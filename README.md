@@ -1,1 +1,1 @@
-
+Bu Python kodu, İstanbul koordinatlarını  baz alarak, aradığınız bir yıldızın veya gezegenin o anki konumunu hesaplar. Karmaşık koordinatlarla uğraşmak konumunu Kutup Yıldızı'na (Polaris) göre ortalama bir şekilde tarif eder.
