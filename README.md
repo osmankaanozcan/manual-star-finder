@@ -1,1 +1,1 @@
-# manual-star-finder
+Bu proje, karmaşık astronomik koordinat verilerini gerçek zamanlı olarak işleyen ve gözlemciler için anlamlı görsel yönlendirmelere dönüştüren bir navigasyon sistemidir. Sistem, güncel atmosferik verileri ve gök cisimlerinin pozisyonlarını analiz ederek, sağlıklı bir gözlem için dinamik kararlar üretir.(🛠️)
