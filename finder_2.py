@@ -22,7 +22,6 @@ def hava_durumu(enlem,boylam):
     except:
         return None, "Veri alınamadı", None
 
-
 lat = 42.0
 lon = 28.0
 konum = EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=55*u.m)
@@ -33,8 +32,9 @@ print(f"Sicaklik: {derece}°C")
 print(f"Hava: {tarif.capitalize()}")
 print(f"Bulut Orani: %{bulut}")
 
-
 #------------------------------------------------------------------------------------
+
+#CİSMİN ÖNÜMÜZDEKİ 24 SAAT BOYUNCA GÖRÜNÜRLÜK ANALİZİ
 
 hedef_yazisi = input("\nHangi gök cismine bakmak istersiniz?")
 hedef = SkyCoord.from_name(hedef_yazisi)
@@ -75,6 +75,8 @@ else:
 
 #------------------------------------------------------------------------------------
 
+#AYIN PARLAKLIĞI -  ÖNERİLEN GÖZLEM ARALIĞINI - ŞAFAK ZAMANINI -
+
 gunes_altaz = get_sun(zaman_araligi).transform_to(cerceve)
 gunes_yukseklik = gunes_altaz.alt.degree
 maske = gunes_yukseklik < -6
@@ -103,3 +105,22 @@ if np.any(uygun_sartlar):
 else:
     print(f"\n{hedef_yazisi.upper()} sağlıklı gözlem için önerilmiyor.")
 
+#------------------------------------------------------------------------------------
+
+#GÖZLEM İÇİN AY - YÜKSEKLİK - BULUTLULUK DEĞERLENDİRMESİ
+
+puan = 100
+ay_cezası = (ay_yuzde / 100) * (( 180 - ay_mesafe) / 100) * 60
+puan -= ay_cezası
+yukseklik_ceza =((90- zirve_yuksekligi) / 75) * 20
+puan -= bulut + yukseklik_ceza
+puan=max(0 , min(100,puan))
+
+if puan >= 80:
+    print("🔭 Gözlem için hava  koşulları MÜKEMMEL.")
+elif puan >= 50:
+    print("👀 Gözlem yapılabilir, hava koşulları ORTALAMA.")
+elif puan >= 30:
+    print("⚠️ Gözlem zorlayıcı olabilir, hava koşulları KÖTÜ.")
+else:
+    print("❌ Gözlem güncel hava koşulları ile yapılamaz.")

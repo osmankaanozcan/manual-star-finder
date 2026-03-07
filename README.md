@@ -1,1 +1,1 @@
-Bu proje, karmaşık astronomik koordinat verilerini gerçek zamanlı olarak işleyen ve gözlemciler için anlamlı görsel yönlendirmelere dönüştüren veya güncel ve sağlıklı bir gözlem için birtakım yönlendirmelerde bulunur(🛠️)
+# manual-star-finder
