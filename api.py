@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 import requests
 from astropy.coordinates import EarthLocation, SkyCoord, AltAz, get_body, get_sun
 from astropy.time import Time
@@ -14,6 +15,13 @@ import os
 
 #uvicorn api:app --reload
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Herkesin bu API'ye erişmesine izin ver
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(
     CORSMiddleware,
