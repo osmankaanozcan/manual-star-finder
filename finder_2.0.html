@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finder 2.0 | Celestial Navigation System</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #c9d1d9; overflow-x: hidden; }
+
+        .lang-toggle { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; gap: 10px; background: rgba(22, 27, 34, 0.4); backdrop-filter: blur(8px); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(48, 54, 61, 0.5); }
+        .lang-toggle button { background: transparent; border: none; color: #8b949e; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
+        .lang-toggle button.active, .lang-toggle button:hover { color: #58a6ff; }
+
+        .door { position: fixed; top: 0; width: 50vw; height: 100vh; background: #020305; z-index: 9998; }
+        .door-left { left: 0; border-right: 2px solid #58a6ff; animation: openLeft 1s cubic-bezier(0.77, 0, 0.175, 1) forwards 0.5s; }
+        .door-right { right: 0; border-left: 2px solid #58a6ff; animation: openRight 1s cubic-bezier(0.77, 0, 0.175, 1) forwards 0.5s; }
+        @keyframes openLeft { to { transform: translateX(-100%); display: none; } }
+        @keyframes openRight { to { transform: translateX(100%); display: none; } }
+
+        #landing-page { padding: 4rem; max-width: 1400px; margin: 0 auto; }
+        .top-section { display: flex; align-items: center; justify-content: space-between; height: 35vh; margin-bottom: 3rem; }
+        .info-panel { flex: 1; padding-right: 3rem; }
+        .info-panel h1 { color: #fff; font-size: 3.5rem; margin-bottom: 1.5rem; border-bottom: 3px solid #58a6ff; display: inline-block; padding-bottom: 0.5rem; }
+        .info-panel p { font-size: 1.2rem; line-height: 1.8; color: #8b949e; margin-bottom: 1.5rem; }
+        .globe-container { flex: 1; display: flex; justify-content: center; }
+        .globe { width: 250px; height: 250px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #0d2a4a, #000); box-shadow: inset -20px -20px 50px #000, 0 0 50px rgba(88, 166, 255, 0.2); position: relative; overflow: hidden; }
+        .globe-grid { width: 200%; height: 100%; position: absolute; background: repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(88, 166, 255, 0.2) 15px, rgba(88, 166, 255, 0.2) 16px), repeating-linear-gradient(0deg, transparent, transparent 15px, rgba(88, 166, 255, 0.2) 15px, rgba(88, 166, 255, 0.2) 16px); animation: rotateGlobe 20s linear infinite; }
+        @keyframes rotateGlobe { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        /* Timeline / Dikey Liste Stili */
+        .module-showcase { display: flex; flex-direction: column; gap: 1.5rem; padding-left: 2rem; border-left: 2px solid rgba(88, 166, 255, 0.2); }
+        .mod-item { position: relative; padding: 1.5rem 2rem; background: linear-gradient(90deg, rgba(22, 27, 34, 0.8) 0%, rgba(22, 27, 34, 0) 100%); border-radius: 0 12px 12px 0; border-left: 4px solid #58a6ff; transition: 0.4s; cursor: pointer; }
+        .mod-item:hover { background: linear-gradient(90deg, rgba(88, 166, 255, 0.15) 0%, rgba(22, 27, 34, 0) 100%); transform: translateX(15px); }
+        .mod-item::before { content: ''; position: absolute; left: -2.7rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; background: #0b0f19; border: 3px solid #58a6ff; border-radius: 50%; transition: 0.3s; }
+        .mod-item:hover::before { background: #58a6ff; box-shadow: 0 0 15px #58a6ff; }
+        .mod-item h2 { color: #fff; font-size: 1.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 15px;}
+        .mod-item h2 span { font-size: 0.9rem; color: #58a6ff; font-family: monospace; letter-spacing: 2px; }
+        .mod-item p { color: #8b949e; line-height: 1.6; font-size: 1.05rem; }
+        .mod-item.m-tm { border-left-color: #e3b341; } .mod-item.m-tm::before { border-color: #e3b341; } .mod-item.m-tm:hover::before { background: #e3b341; box-shadow: 0 0 15px #e3b341; } .mod-item.m-tm h2, .mod-item.m-tm h2 span { color: #e3b341; }
+        .mod-item.m-sp { border-left-color: #9bb0ff; } .mod-item.m-sp::before { border-color: #9bb0ff; } .mod-item.m-sp:hover::before { background: #9bb0ff; box-shadow: 0 0 15px #9bb0ff; } .mod-item.m-sp h2, .mod-item.m-sp h2 span { color: #9bb0ff; }
+        .mod-item.m-sb { border-left-color: #ff4d4d; } .mod-item.m-sb::before { border-color: #ff4d4d; } .mod-item.m-sb:hover::before { background: #ff4d4d; box-shadow: 0 0 15px #ff4d4d; } .mod-item.m-sb h2, .mod-item.m-sb h2 span { color: #ff4d4d; }
+
+        .page { display: none; padding: 2rem; max-width: 1600px; margin: 0 auto; margin-top: 40px; }
+        .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: #161b22; padding: 1rem 2rem; border-radius: 12px; border: 1px solid #30363d; padding-right: 140px; }
+        .back-btn { background: transparent; border: 1px solid #8b949e; color: #c9d1d9; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .back-btn:hover { background: #30363d; color: #fff; }
+        .search-box { display: flex; gap: 10px; flex: 1; max-width: 500px; margin-left: 2rem; }
+        .search-box input { flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: #fff; outline: none; }
+        .search-box button { padding: 0.8rem 1.5rem; background: #58a6ff; color: #0b0f19; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .loading { color: #e3b341; font-weight: bold; display: none; margin-left: 10px; align-self: center;}
+
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 1rem; margin-bottom: 2rem; }
+        .header-title h1 { color: #fff; font-size: 2rem; }
+        .header-title p { color: #8b949e; font-size: 1.1rem; margin-top: 0.5rem; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; position: relative; }
+        .card h2 { font-size: 1.2rem; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 1.05rem; }
+        .data-label { color: #8b949e; }
+        .data-value { color: #58a6ff; font-weight: bold; text-align: right;}
+        .highlight { color: #e3b341; font-size: 0.95rem; margin-top: 5px; display: block; border-left: 3px solid #e3b341; padding-left: 10px;}
+
+        .life-bar-bg { width: 100%; height: 12px; background: #0d1117; border-radius: 6px; overflow: hidden; margin: 10px 0; border: 1px solid #30363d;}
+        .life-bar-fill { height: 100%; background: linear-gradient(90deg, #58a6ff, #d29922, #f85149); transition: width 1s ease-in-out; }
+
+        .gauge-container { position: relative; width: 140px; height: 80px; text-align: center; }
+        .gauge-svg { width: 100%; height: 100%; overflow: visible; }
+        .gauge-bg { fill: none; stroke: #21262d; stroke-width: 12; stroke-linecap: round; }
+        .gauge-value { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease-out, stroke 0.5s; }
+        .gauge-text { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); font-size: 2rem; font-weight: bold; color: #fff; }
+        .gauge-label { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; font-weight: bold; color: #8b949e; }
+        
+        .graph-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; height: 450px; display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden;}
+        .canvas-container { flex: 1; position: relative; width: 100%; height: 100%; }
+        
+        .step-container { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;}
+        .step-box { background: #161b22; border-left: 5px solid #58a6ff; padding: 2rem; border-radius: 8px; font-size: 1.2rem; display: flex; align-items: center; gap: 20px;}
+        .step-number { background: #58a6ff; color: #0b0f19; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; border-radius: 50%; flex-shrink: 0;}
+
+        .spec-bar-container { margin-bottom: 1rem; }
+        .spec-label { display: flex; justify-content: space-between; color: #8b949e; font-size: 0.9rem; margin-bottom: 5px;}
+        .spec-bar-bg { width: 100%; height: 16px; background: #0d1117; border-radius: 4px; border: 1px solid #30363d; overflow: hidden;}
+        .spec-bar-fill { height: 100%; transition: width 1s ease-in-out; }
+        .uv-glow { background: #9bb0ff; box-shadow: 0 0 10px #9bb0ff; }
+        .vis-glow { background: linear-gradient(90deg, #9bb0ff, #3fb950, #e3b341, #f85149); box-shadow: 0 0 10px #e3b341; }
+        .ir-glow { background: #f85149; box-shadow: 0 0 10px #f85149; }
+
+        .flip-container { perspective: 1000px; width: 100%; height: 500px; position: relative; margin-top: 1.5rem; }
+        .flipper { transition: transform 0.8s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; position: relative; width: 100%; height: 100%; }
+        .flip-container.flipped .flipper { transform: rotateY(180deg); }
+        .front, .back { backface-visibility: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 12px; overflow: hidden; background: #161b22; border: 1px solid #30363d; }
+        .front { z-index: 2; transform: rotateY(0deg); }
+        .back { transform: rotateY(180deg); background: #05080f; } 
+        
+        .switch-btn { position: absolute; top: 1.5rem; left: 1.5rem; z-index: 20; background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; pointer-events: auto;}
+        .switch-btn:hover { background: rgba(88, 166, 255, 0.3); transform: scale(1.05); }
+        .switch-btn.btn-back { color: #ff7b54; background: rgba(255, 123, 84, 0.15); border-color: rgba(255, 123, 84, 0.4); }
+        .switch-btn.btn-back:hover { background: rgba(255, 123, 84, 0.3); }
+
+        .card-header-titles { position: absolute; top: 1.5rem; right: 2rem; z-index: 10; pointer-events: none; text-align: right; }
+        .card-header-titles h2 { margin-bottom: 5px; font-size: 1.4rem; }
+
+        .ui-overlay { position: absolute; z-index: 10; background: rgba(13, 17, 23, 0.6); backdrop-filter: blur(8px); padding: 1.2rem; border-radius: 8px; border: 1px solid rgba(88, 166, 255, 0.3); pointer-events: none;}
+        .ui-sun { bottom: 20px; left: 20px; border-color: rgba(227, 179, 65, 0.4);}
+        .ui-target { bottom: 20px; right: 20px; text-align: right; }
+        .ui-overlay h3 { color: #fff; font-size: 1.2rem; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
+        .ui-overlay p { color: #8b949e; font-size: 0.9rem; margin-bottom: 2px;}
+        .ui-overlay .val { color: #64bdff; font-weight: bold; font-family: 'Courier New', Courier, monospace; font-size: 1.15rem;}
+        .ui-sun .val { color: #ffca42; }
+        
+        .engine-hint { position: absolute; top: 20px; right: 50%; transform: translateX(50%); color: #8b949e; font-size: 0.85rem; opacity: 0.8; pointer-events: none; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; z-index: 10;}
+
+        #sb_time { -webkit-appearance: none; width: 100%; height: 15px; border-radius: 8px; background: linear-gradient(90deg, #3fb950, #e3b341, #ff7b54, #ff4d4d); outline: none; margin-top: 15px; }
+        #sb_time::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 25px; height: 25px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(255,255,255,0.8); border: 2px solid #000; }
+    </style>
+</head>
+<body>
+
+    <div class="lang-toggle">
+        <button id="btn-tr" class="active" onclick="setLang('tr')">TR</button>
+        <span>|</span>
+        <button id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+
+    <div class="door door-left"></div>
+    <div class="door door-right"></div>
+
+    <div id="landing-page">
+        <div class="top-section">
+            <div class="info-panel">
+                <h1 id="t-main-title">GÖKYÜZÜ ANALİZİ</h1>
+                <p id="t-main-desc1">Finder 2.0 Sistemi, amatör astronomiyi mühendislik disipliniyle birleştiren gelişmiş bir gökyüzü analiz aracıdır.</p>
+                <p id="t-main-desc2">Çevresel sensörler, yörünge algoritmaları ve ışık kirliliği faktörlerini hesaplayarak size en optimal gözlem koşullarını sunar.</p>
+            </div>
+            <div class="globe-container"><div class="globe"><div class="globe-grid"></div></div></div>
+        </div>
+
+        <div style="max-width: 1000px; margin: 0 auto; padding-bottom: 4rem;">
+            <div class="module-showcase">
+                <div class="mod-item" style="border-left-color: #00e676;" onclick="openPage('mission-page')">
+                    <h2 style="color: #00e676;"><span id="t-mission-badge">🌟 BİLGİ</span> <span id="t-mission-menu-title">PROJENİN AMACI</span></h2>
+                    <p id="t-mission-menu-desc">Amatör astronomiyi mühendislikle birleştiren bu sistemin asıl vizyonu.</p>
+                </div>
+                <div class="mod-item" onclick="openPage('hand-finder-page')">
+                    <h2><span>MODÜL 01</span> HAND FINDER</h2>
+                    <p id="t-mod1-desc">Polaris referans alınarak oluşturulan yön bulma sistemi.</p>
+                </div>
+                <div class="mod-item" onclick="openPage('dashboard-page')">
+                    <h2><span>MODÜL 02</span> FINDER 2.0</h2>
+                    <p id="t-mod2-desc">Anlık hava durumu, Ay illüminasyonu, şafak vakti ve hedefin periyodik grafiğini analiz eden gözlem paneli.</p>
+                </div>
+                <div class="mod-item m-tm" onclick="openPage('telemetry-page')">
+                    <h2><span>MODÜL 03</span> TELEMETRY</h2>
+                    <p id="t-mod3-desc">Gök cisminin kütle, sıcaklık, yaşam döngüsü ve derin uzay analizi.</p>
+                </div>
+                <div class="mod-item m-sp" onclick="openPage('spectroscopy-page')">
+                    <h2><span>MODÜL 04</span> SPECTROSCOPY</h2>
+                    <p id="t-mod4-desc">Kuantum spektrum analizi, elementel yapı ve termal radyasyon dağılımı.</p>
+                </div>
+                <div class="mod-item m-sb" onclick="openPage('sandbox-page'); setTimeout(initSandbox, 100);">
+                    <h2 id="t-sb-menu-title"><span>MODÜL 05</span> TANRI MODU (SANDBOX)</h2>
+                    <p id="t-mod5-desc">Kütle, dönüş hızı ve zamanı bükerek yıldızın kaderiyle canlı olarak oyna!</p>
+                </div>
+            </div>
+        </div>
+    </div> <div id="mission-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+        </div>
+        
+        <div style="display: flex; gap: 3rem; margin-top: 2rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 4rem 2rem;">
+                <div style="width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #002313, #000); box-shadow: inset -15px -15px 30px #000, 0 0 40px rgba(0, 230, 118, 0.4); position: relative; overflow: hidden; margin-bottom: 2rem;">
+                    <div style="position: absolute; width: 200%; height: 100%; background: repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(0, 230, 118, 0.2) 15px, rgba(0, 230, 118, 0.2) 16px), repeating-linear-gradient(0deg, transparent, transparent 15px, rgba(0, 230, 118, 0.2) 15px, rgba(0, 230, 118, 0.2) 16px); animation: rotateGlobe 15s linear infinite;"></div>
+                </div>
+                <h1 style="color: #00e676; font-size: 2.8rem; margin-bottom: 0.5rem; text-shadow: 0 0 15px rgba(0, 230, 118, 0.3);">FINDER 2.0</h1>
+                <p style="color: #8b949e; font-size: 1.1rem; letter-spacing: 3px; font-family: monospace;">CELESTIAL NAVIGATION SYSTEM</p>
+            </div>
+
+            <div style="flex: 2; min-width: 400px; display: flex; flex-direction: column; justify-content: center; gap: 1.5rem;">
+                <div style="background: rgba(22, 27, 34, 0.6); border-left: 4px solid #58a6ff; padding: 2rem; border-radius: 8px; border: 1px solid #30363d; border-left-width: 4px;">
+                    <h2 id="t-mission-aim-title" style="color: #58a6ff; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">🎯 Projenin Misyonu</h2>
+                    <p id="t-mission-aim-desc" style="color: #c9d1d9; line-height: 1.7; font-size: 1.1rem;">Finder 2.0, gökyüzü gözlemlerini şansa bırakmak istemeyenler için tasarlandı. Gerçek zamanlı sensör verileri, kuantum spektrum analizleri ve yörünge mekaniklerini tek bir akıllı panelde birleştirerek; amatör astronomiyi profesyonel ve veri odaklı bir bilimsel deneyime dönüştürmeyi amaçlıyoruz.</p>
+                </div>
+                <div style="background: rgba(255, 77, 77, 0.05); border-left: 4px solid #ff4d4d; padding: 2rem; border-radius: 8px; border: 1px solid rgba(255, 77, 77, 0.2); border-left-width: 4px;">
+                    <h2 id="t-mission-beta-title" style="color: #ff4d4d; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">⚠️ Sistem Durumu & Bilgilendirme</h2>
+                    <p id="t-mission-beta-desc" style="color: #c9d1d9; line-height: 1.7; font-size: 1.1rem;">Bu sistem şu anda <strong>Açık Beta (Prototip v2.0)</strong> aşamasındadır. Sağlanan telemetri verileri, yaşam döngüsü analizleri ve yörünge simülasyonları yüksek doğruluklu algoritmalarla hesaplansa da; profesyonel uzay ajanslarının anlık verilerinin doğrudan yerine kullanılamaz. Stabilizasyon süreci devam etmektedir.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hand-finder-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+            <div class="search-box">
+                <input type="text" id="hfInput" placeholder="Gök cismi adını giriniz (Örn: Polaris)...">
+                <button class="t-btn-target" onclick="analyzeHandFinder()">Hedefle</button>
+                <span class="loading t-loading" id="hfLoadingText">Hesaplanıyor...</span>
+            </div>
+        </div>
+        <div class="header"><div class="header-title"><h1 id="t-hf-title">Manuel Hedefleme Modülü</h1><p><span class="t-target-label">İzlenen Hedef:</span> <strong id="hfTargetName" style="color: #fff;">BEKLENİYOR...</strong></p></div></div>
+        <div class="dashboard-grid">
+            <div style="grid-column: span 2;">
+                <h2 id="t-hf-guide" style="color: #fff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem;">🎯 Gökyüzü Bulma Rehberi</h2>
+                <div class="step-container">
+                    <div class="step-box"><div class="step-number">1</div><div class="step-text" id="t-hf-step1">Yüzünü tam <strong>KUZEY</strong>'e dön ve <strong>Polaris'i</strong> bul.</div></div>
+                    <div class="step-box" style="border-left-color: #e3b341;"><div class="step-number" style="background: #e3b341;">2</div><div class="step-text"><span id="t-hf-step2-1">Polaris'ten tam</span> <span class="step-data" id="hfDikeyOlcum">[0]</span> <strong style="color:#e3b341; margin-right: 5px;" id="hfDikeyYon">---</strong> <span id="t-hf-step2-3">bak.</span></div></div>
+                    <div class="step-box" style="border-left-color: #3fb950;"><div class="step-number" style="background: #3fb950;">3</div><div class="step-text"><span id="t-hf-step3-1">Sonra o noktadan</span> <span class="step-data" id="hfYatayOlcum">[0]</span> <strong style="color:#3fb950; margin-right: 5px;" id="hfYatayYon">---</strong> <span id="t-hf-step3-3">doğru kay.</span></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2 id="t-hf-simbad">📡 SIMBAD Telemetri Verisi</h2>
+                <div class="data-row"><span class="data-label" id="t-hf-mag">Görünür Büyüklük (V):</span> <span class="data-value" id="hfMag">--</span></div>
+                <br><div id="t-hf-status" style="text-align: center; color: #8b949e; font-size: 0.9rem;">Sistem Durumu:</div>
+                <div id="hfYorum" style="text-align: center; color: #3fb950; font-weight: bold; font-size: 1.1rem; margin-top: 10px;">Veri Bekleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+            <div class="search-box">
+                <input type="text" id="targetInput" placeholder="Gök cismi adını giriniz (Örn: Mars)...">
+                <button class="t-btn-analyze" onclick="analyzeTarget()">Analiz Et</button>
+                <span class="loading t-loading" id="loadingText">Hesaplanıyor...</span>
+            </div>
+        </div>
+        <div class="header">
+            <div class="header-title"><h1 id="t-dash-title">Gözlem Analiz Paneli</h1><p><span class="t-target-label">İzlenen Hedef:</span> <strong id="targetNameDisplay" style="color: #fff;">BEKLENİYOR...</strong></p></div>
+            <div class="gauge-container"><svg class="gauge-svg" viewBox="0 0 100 50"><path class="gauge-bg" d="M 10 40 A 40 40 0 0 1 90 40" /><path class="gauge-value" id="gaugePath" d="M 10 40 A 40 40 0 0 1 90 40" style="stroke-dasharray: 125.6; stroke-dashoffset: 125.6;" /></svg><div class="gauge-text" id="scoreText">0</div><div class="gauge-label" id="scoreLabel">Bekleniyor</div></div>
+        </div>
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2 id="t-card1-title">🌍 Sensör & Hava Durumu</h2>
+                <div class="data-row"><span class="data-label" id="t-temp">Sıcaklık:</span> <span class="data-value" id="tempVal">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-weather">Hava Durumu:</span> <span class="data-value" id="weatherVal" style="color: #3fb950;">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-cloud">Bulut Oranı:</span> <span class="data-value" id="cloudVal">--</span></div>
+            </div>
+            <div class="card">
+                <h2 id="t-card2-title">🌟 İllüminasyon & Öneriler</h2>
+                <div class="data-row"><span class="data-label" id="t-moon-ill">Ay Parlaklığı:</span> <span class="data-value" id="moonIllum">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-moon-sep">Açısal Mesafe:</span> <span class="data-value" id="moonSep">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-obs">Önerilen Gözlem:</span> <span class="data-value" id="obsTime" style="color: #e3b341;">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-dawn">Şafak Vakti:</span> <span class="data-value" id="dawnTime">--</span></div>
+            </div>
+        </div>
+        <div class="graph-card"><h2 id="t-graph-title" style="width: 100%; text-align: left;">📈 Doğuş ve Batış Arası Hareket (Son 24 Saat)</h2><div class="canvas-container" style="width: 100%;"><canvas id="astroChart"></canvas></div></div>
+    </div>
+
+    <div id="telemetry-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+            <div class="search-box">
+                <input type="text" id="tmInput" placeholder="Gök cismi adını giriniz (Örn: Sirius)...">
+                <button class="t-btn-analyze" onclick="analyzeTelemetry()" style="background:#e3b341;">Analiz Et</button>
+                <span class="loading t-loading" id="tmLoadingText">Hesaplanıyor...</span>
+            </div>
+        </div>
+        
+        <div class="header">
+            <div class="header-title">
+                <h1 id="t-tm-title" style="color: #e3b341;">Derin Uzay Telemetrisi</h1>
+                <p><span class="t-target-label">İzlenen Hedef:</span> <strong id="tmTargetName" style="color: #fff;">BEKLENİYOR...</strong></p>
+            </div>
+            <div style="text-align: right;">
+                <h2 id="tmClass" style="color: #fff; font-size: 2rem; font-family: 'Courier New', Courier, monospace;">--</h2>
+                <p id="tmClassLabel" style="color: #8b949e;">Spektral Sınıf</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));">
+            <div class="card">
+                <h2 id="t-tm-phys">🔥 Fiziksel ve Sıcaklık Analizi</h2>
+                <div class="data-row"><span class="data-label" id="t-tm-temp">Yüzey Sıcaklığı:</span> <span class="data-value" id="tmTemp">--</span></div>
+                <span class="highlight" id="tmTempComp">--</span><br>
+                <div class="data-row"><span class="data-label" id="t-tm-mass">Tahmini Kütle:</span> <span class="data-value" id="tmMass">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-tm-rad">Tahmini Yarıçap:</span> <span class="data-value" id="tmRad">--</span></div>
+            </div>
+            <div class="card">
+                <h2 id="t-tm-dist">🚀 Uzaklık ve Yolculuk Analizi</h2>
+                <div class="data-row"><span class="data-label" id="t-tm-ly">Işık Yılı Uzaklığı:</span> <span class="data-value" id="tmLy">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-tm-pc">Parsek (pc):</span> <span class="data-value" id="tmPc">--</span></div>
+                <br><p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 5px;" id="t-tm-travel">Yolculuk Süresi:</p>
+                <div class="data-row"><span class="data-label">Işık Hızıyla (c):</span> <span class="data-value" id="tmTravelLight" style="color:#58a6ff;">--</span></div>
+                <div class="data-row"><span class="data-label">Voyager 1 Hızıyla:</span> <span class="data-value" id="tmTravelVoy" style="color:#e3b341;">--</span></div>
+            </div>
+            <div class="card">
+                <h2 id="t-tm-life">⏳ Hayat Evresi Analizi</h2>
+                <div class="data-row"><span class="data-label" id="t-tm-life-tot">Toplam Ömrü:</span> <span class="data-value" id="tmLifeTot" style="color:#e3b341;">--</span></div>
+                <div class="data-row"><span class="data-label" id="t-tm-life-left">Kalan Ömrü:</span> <span class="data-value" id="tmLifeLeft">--</span></div>
+                <p style="color: #8b949e; font-size: 0.9rem; margin-top: 15px;" id="t-tm-life-prog">Yaşam İlerlemesi:</p>
+                <div class="life-bar-bg"><div class="life-bar-fill" id="tmLifeBar" style="width: 0%;"></div></div>
+                <div style="display:flex; justify-content:space-between; font-size: 0.8rem; color: #8b949e;"><span id="t-tm-birth">Doğum</span><span id="tmLifePct">0%</span><span id="t-tm-end">Ölüm</span></div>
+                <div class="data-row" style="margin-top: 15px;"><span class="data-label" id="t-tm-death">Beklenen Son:</span> <span class="data-value" id="tmDeath" style="color:#f85149;">--</span></div>
+            </div>
+        </div>
+
+        <div class="flip-container" id="orbit-flip-container">
+            <div class="flipper">
+                <div class="front">
+                    <button class="switch-btn" onclick="flipTo3D()">
+                        <span style="font-size: 1.2rem;">🔄</span> <span id="t-btn-3d">Canlı 3D Motoru</span>
+                    </button>
+                    <div class="card-header-titles">
+                        <h2 id="t-tm-orbit" style="color:#fff;">🪐 Holografik Yörünge Radarı</h2>
+                        <p style="color: #8b949e; font-size: 0.95rem;" id="t-tm-orbit-desc">Güneş'in yerine konsaydı hangi gezegenleri yutardı?</p>
+                    </div>
+                    <div id="tmOrbitStatsPanel" style="position: absolute; top: 50%; right: 2rem; transform: translateY(-50%); z-index: 10; text-align: right; background: rgba(22, 27, 34, 0.6); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(88, 166, 255, 0.2); backdrop-filter: blur(8px); display: none; pointer-events: none;">
+                        <div style="color: #8b949e; font-size: 0.9rem; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;" id="t-tm-rad-title">Yıldız Yarıçapı</div>
+                        <div id="tmOrbitRadVal" style="color: #fff; font-size: 2.2rem; font-weight: bold; font-family: 'Courier New', Courier, monospace; margin-bottom: 5px; text-shadow: 0 0 10px rgba(255,255,255,0.3);">--</div>
+                        <div id="tmOrbitRadComp" style="color: #e3b341; font-size: 1.05rem; border-right: 3px solid #e3b341; padding-right: 10px;">--</div>
+                    </div>
+                    <div style="width: 100%; height: 100%; background: radial-gradient(circle at center, #0d1522 0%, #05080f 100%);">
+                        <canvas id="orbitCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                    </div>
+                </div>
+
+                <div class="back">
+                    <button class="switch-btn btn-back" onclick="flipTo2D()">
+                        <span style="font-size: 1.2rem;">🔄</span> <span id="t-btn-2d">2D RADAR</span>
+                    </button>
+                    <div class="card-header-titles">
+                        <h2 style="color:#ff7b54;" id="t-eng-title">🪐 Canlı Stellar Engine</h2>
+                        <p style="color: #8b949e; font-size: 0.95rem;" id="t-eng-desc">Güneş (Sol) ve Hedef Yıldız (Sağ) Hacimsel Kıyaslama</p>
+                    </div>
+                    <div class="engine-hint" id="t-eng-hint">🖱️ tekerleği geriye doğru kaydırarak (zoom-out) hedef yıldızı keşfet!</div>
+                    <div class="ui-overlay ui-sun">
+                        <h3 id="t-eng-sun">GÜNEŞ (Referans)</h3>
+                        <p><span id="t-eng-rad-lbl1">Yarıçap:</span> <span class="val">1 R☉</span></p>
+                        <p><span id="t-eng-temp-lbl1">Sıcaklık:</span> <span class="val">5778 K</span></p>
+                    </div>
+                    <div class="ui-overlay ui-target" id="engTargetPanel" style="display:none;">
+                        <h3 id="engTargetName" style="color:#64bdff;">--</h3>
+                        <p><span id="t-eng-rad-lbl2">Yarıçap:</span> <span class="val" id="engRadVal">--</span></p>
+                        <p><span id="t-eng-temp-lbl2">Sıcaklık:</span> <span class="val" id="engTempVal" style="color:#64bdff;">--</span></p>
+                    </div>
+                    <div id="engine-container" style="width: 100%; height: 100%;">
+                        <canvas id="canvas3D" style="width: 100%; height: 100%; display: block; outline: none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="spectroscopy-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+            <div class="search-box">
+                <input type="text" id="spInput" placeholder="Gök cismi adını giriniz (Örn: Sirius)...">
+                <button class="t-btn-analyze" onclick="analyzeSpectroscopy()" style="background:#9bb0ff;">Analiz Et</button>
+                <span class="loading t-loading" id="spLoadingText">Hesaplanıyor...</span>
+            </div>
+        </div>
+        <div class="header">
+            <div class="header-title">
+                <h1 id="t-sp-title" style="color: #9bb0ff;">Kuantum & Spektral Analiz</h1>
+                <p><span class="t-target-label">İzlenen Hedef:</span> <strong id="spTargetName" style="color: #fff;">BEKLENİYOR...</strong></p>
+            </div>
+            <div style="text-align: right;">
+                <h2 id="spWien" style="color: #fff; font-size: 2rem; font-family: 'Courier New', Courier, monospace;">-- nm</h2>
+                <p id="t-sp-wien-lbl" style="color: #8b949e;">Wien Tepe Dalga Boyu</p>
+            </div>
+        </div>
+        <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
+            <div class="card" style="display: flex; flex-direction: column;">
+                <h2 id="t-sp-chem">🧪 Kimyasal Kompozisyon (Kütlece)</h2>
+                <p style="color: #8b949e; font-size: 0.85rem; margin-bottom: 15px;" id="spChemSource">Kaynak: Bekleniyor</p>
+                <div style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center; min-height: 250px;">
+                    <canvas id="chemChart"></canvas>
+                    <div style="position: absolute; text-align: center; pointer-events: none;">
+                        <span id="spChemMainVal" style="font-size: 1.8rem; font-weight: bold; color: #fff;">--</span><br>
+                        <span id="spChemMainLbl" style="font-size: 0.9rem; color: #8b949e;">Hidrojen</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h2 id="t-sp-wave">🌈 Işık & Dalga Boyu Dağılımı</h2>
+                <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 25px;" id="t-sp-wave-desc">Planck spektrumu üzerinden hesaplanan termal radyasyon yüzdeleri.</p>
+                <div class="spec-bar-container"><div class="spec-label"><span style="color:#9bb0ff; font-weight:bold;">Ultraviyole (UV)</span> <span id="spUvPct">--%</span></div><div class="spec-bar-bg"><div class="spec-bar-fill uv-glow" id="spUvBar" style="width: 0%;"></div></div></div>
+                <div class="spec-bar-container" style="margin-top: 25px;"><div class="spec-label"><span style="color:#e3b341; font-weight:bold;" id="t-sp-vis">Görünür Işık (VIS)</span> <span id="spVisPct">--%</span></div><div class="spec-bar-bg"><div class="spec-bar-fill vis-glow" id="spVisBar" style="width: 0%;"></div></div></div>
+                <div class="spec-bar-container" style="margin-top: 25px;"><div class="spec-label"><span style="color:#f85149; font-weight:bold;" id="t-sp-ir">Kızılötesi (IR)</span> <span id="spIrPct">--%</span></div><div class="spec-bar-bg"><div class="spec-bar-fill ir-glow" id="spIrBar" style="width: 0%;"></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sandbox-page" class="page">
+        <div class="controls-row">
+            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
+            <div class="search-box">
+                <input type="text" id="sbInput" placeholder="Gök cismi adını giriniz (Örn: Sirius)...">
+                <button class="t-btn-analyze" onclick="analyzeSandbox()" style="background:#ff4d4d; color:#fff;">Hedefi Yükle</button>
+                <span class="loading t-loading" id="sbLoadingText" style="color:#ff4d4d;">Veri Çekiliyor...</span>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 id="t-sb-title" style="color:#ff4d4d; margin:0;">🌌 Kozmik Simülatör (Tanrı Modu)</h1>
+            <h3 style="color:#fff; margin:0;">Hedef: <span id="sbTargetName" style="color:#ff4d4d;">GÜNEŞ (VARSAYILAN)</span></h3>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div id="sb-engine-container" style="width: 100%; height: 45vh; background: #000; border-radius: 12px; border: 1px solid #30363d; position: relative; overflow: hidden;">
+                 <div id="t-sb-hint" style="position: absolute; top:15px; left:15px; color:#8b949e; font-size:0.85rem; z-index:10; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;">🖱️ Mouse ile döndür ve yakınlaş</div>
+            </div>
+            <div style="background: #161b22; padding: 25px; border-radius: 12px; border: 1px solid #30363d;">
+                <div style="display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-mass">Kütle (M☉):</span> <span id="sb_val_mass" style="color:#58a6ff;">1.0</span></label>
+                            <input type="range" id="sb_mass" min="0.1" max="50" step="0.1" value="1" style="width:100%; accent-color:#58a6ff;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-rad">Yarıçap (R☉):</span> <span id="sb_val_rad" style="color:#58a6ff;">1.0</span></label>
+                            <input type="range" id="sb_rad" min="0.1" max="500" step="0.1" value="1" style="width:100%; accent-color:#58a6ff;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-temp">Yüzey Sıcaklığı (K):</span> <span id="sb_val_temp" style="color:#ffca4d;">5778</span></label>
+                            <input type="range" id="sb_temp" min="2000" max="40000" step="100" value="5778" style="width:100%; accent-color:#ffca4d;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-rot">Dönüş Hızı (km/s):</span> <span id="sb_val_rot" style="color:#9bb0ff;">2</span></label>
+                            <input type="range" id="sb_rot" min="0" max="600" step="1" value="2" style="width:100%; accent-color:#9bb0ff;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-glow">Işıma Parlaklığı:</span> <span id="sb_val_glow" style="color:#fff;">50</span></label>
+                            <input type="range" id="sb_glow" min="0" max="100" step="1" value="50" style="width:100%; accent-color:#fff;">
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; border-left: 1px solid #30363d; padding-left: 20px;">
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-h">Başlangıç Hidrojen (H):</span> <span style="color:#58a6ff;">Mevcut %<span id="sb_val_h2">73.5</span></span></label>
+                            <input type="range" id="sb_h2" min="0" max="100" step="0.1" value="73.5" style="width:100%; accent-color:#58a6ff;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-he">Başlangıç Helyum (He):</span> <span style="color:#e3b341;">Mevcut %<span id="sb_val_he">24.8</span></span></label>
+                            <input type="range" id="sb_he" min="0" max="100" step="0.1" value="24.8" style="width:100%; accent-color:#e3b341;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-o">Başlangıç Oksijen (O):</span> <span style="color:#3fb950;">Mevcut %<span id="sb_val_o">0.8</span></span></label>
+                            <input type="range" id="sb_o" min="0" max="100" step="0.1" value="0.8" style="width:100%; accent-color:#3fb950;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-c">Başlangıç Karbon (C):</span> <span style="color:#ff7b54;">Mevcut %<span id="sb_val_c">0.3</span></span></label>
+                            <input type="range" id="sb_c" min="0" max="100" step="0.1" value="0.3" style="width:100%; accent-color:#ff7b54;">
+                        </div>
+                        <div>
+                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-fe">Başlangıç Demir (Fe):</span> <span style="color:#8b949e;">Mevcut %<span id="sb_val_fe">0.1</span></span></label>
+                            <input type="range" id="sb_fe" min="0" max="100" step="0.1" value="0.1" style="width:100%; accent-color:#8b949e;">
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 25px; border-top: 1px solid #30363d; padding-top: 20px;">
+                    <label id="t-sb-time" style="color:#ff4d4d; font-size:1.3rem; font-weight:bold; display:flex; justify-content:space-between;">
+                        ⏳ Zamanı İleri Sar (Milyon Yıl): <span id="sb_val_time">0</span>
+                    </label>
+                    <input type="range" id="sb_time" min="0" max="15000" step="0.001" value="0">
+                    <h2 id="sb_fate_text" style="text-align:center; margin-top: 30px; color:#3fb950; font-family:'Courier New', Courier, monospace; font-size:1.8rem; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4);">✨ DURUM: STABİL (ANA DİZİ)</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dict = {
+            tr: { 
+                main_title: "İLERİ DÜZEY GÖKYÜZÜ ANALİZİ", main_desc1: "Finder 2.0 Sistemi, amatör astronomiyi mühendislik disipliniyle birleştiren gelişmiş bir gökyüzü analiz aracıdır.", main_desc2: "Çevresel sensörler, yörünge algoritmaları ve ışık kirliliği faktörlerini hesaplayarak size en optimal gözlem koşullarını sunar.", mod1_desc: "Polaris referans alınarak oluşturulan yön bulma sistemi.", mod2_desc: "Anlık hava durumu, Ay illüminasyonu, şafak vakti ve hedefin periyodik grafiğini analiz eden gözlem paneli.", mod3_desc: "Gök cisminin kütle, sıcaklık, yaşam döngüsü ve derin uzay analizi.", mod4_desc: "Kuantum spektrum analizi, elementel yapı ve termal radyasyon dağılımı.", mod5_desc: "Kütle, dönüş hızı ve zamanı bükerek yıldızın kaderiyle canlı olarak oyna!", sb_menu_title: "TANRI MODU (SANDBOX)", back_btn: "◄ Ana Sayfaya Dön", search_ph: "Gök cismi adını giriniz (Örn: Polaris)...", btn_target: "Hedefle", btn_analyze: "Analiz Et", loading: "Hesaplanıyor...", wait: "Veri Bekleniyor...", target_label: "İzlenen Hedef:", hf_title: "Manuel Hedefleme Modülü", hf_guide: "🎯 Gökyüzü Bulma Rehberi", hf_step1: "Yüzünü tam <strong>KUZEY</strong>'e dön ve <strong>Polaris'i</strong> bul.", hf_simbad: "📡 SIMBAD Telemetri", hf_mag: "Görünür Büyüklük (V):", hf_status: "Sistem Durumu:", dash_title: "Gözlem Analiz Paneli", card1_title: "🌍 Sensör & Hava Durumu", temp: "Sıcaklık:", weather: "Hava Durumu:", cloud: "Bulut Oranı:", card2_title: "🌟 İllüminasyon & Öneriler", moon_ill: "Ay Parlaklığı:", moon_sep: "Açısal Mesafe:", obs: "Önerilen Gözlem:", dawn: "Şafak Vakti:", graph_title: "📈 Doğuş ve Batış Arası Hareket (Son 24 Saat)", tm_title: "Derin Uzay Telemetrisi", tm_class: "Spektral Sınıf", tm_phys: "🔥 Fiziksel ve Sıcaklık Analizi", tm_temp: "Yüzey Sıcaklığı:", tm_mass: "Tahmini Kütle:", tm_rad: "Tahmini Yarıçap:", tm_orbit: "🪐 Holografik Yörünge Radarı", tm_orbit_desc: "Güneş'in yerine konsaydı hangi gezegenleri yutardı?", tm_life: "⏳ Hayat Evresi Analizi", tm_life_tot: "Toplam Ömrü:", tm_life_left: "Kalan Ömrü:", tm_life_prog: "Yaşam İlerlemesi:", tm_death: "Beklenen Son:", tm_dist: "🚀 Uzaklık ve Yolculuk Analizi", tm_ly: "Işık Yılı Uzaklığı:", tm_pc: "Parsek (pc):", tm_travel: "Yolculuk Süresi:", tm_birth: "Doğum", tm_end: "Ölüm", tm_rad_title: "Yıldız Yarıçapı", sp_title: "Kuantum & Spektral Analiz", sp_wien_lbl: "Wien Tepe Dalga Boyu", sp_chem: "🧪 Kimyasal Kompozisyon (Kütlece)", sp_wave: "🌈 Işık & Dalga Boyu Dağılımı", sp_wave_desc: "Planck spektrumu üzerinden hesaplanan termal radyasyon yüzdeleri.", sp_vis: "Görünür Işık (VIS)", sp_ir: "Kızılötesi (IR)", cls_v: "Ana Dizi (V)", cls_iv: "Alt Dev (IV)", cls_iii: "Dev (III)", cls_ii: "Parlak Dev (II)", cls_i: "Süper Dev (I)", cls_unk: "Bilinmiyor", sun_k: "K", sun_hot: "Güneş'ten ~{0} - {1} kat daha sıcak.", sun_cold: "Güneş'ten ~{0} - {1} kat daha soğuk.", sun_sim: "Güneş ile benzer sıcaklıkta.", rad_big: "Güneş'in ~{0} - {1} katı büyüklüğünde.", rad_small: "Güneş'in ~{0} - {1} katı kadar küçük.", rad_sim: "Güneş ile benzer boyutta.", yr_b: " milyar yıl", yr_m: " milyon yıl", yr_k: " bin yıl", yr: " yıl", d_bh: "Kara Delik (Süpernova)", d_ns: "Nötron Yıldızı (Süpernova)", d_wd: "Beyaz Cüce (Gezegen Bulutsusu)", d_rd: "Kırmızı Cüce (Yavaş Sönümleme)", p_mercury: "Merkür", p_venus: "Venüs", p_earth: "Dünya", p_mars: "Mars", p_jupiter: "Jüpiter", msg_swallowed: "YUTULDU", msg_safe: "GÜVENDE", elem_h: "Hidrojen", elem_he: "Helyum", elem_met: "Metaller (O, C, Ne, Fe...)", src: "Kaynak", btn_3d: "Canlı 3D Motoru", btn_2d: "2D RADAR", eng_title: "Canlı Stellar Engine", eng_desc: "Güneş (Sol) ve Hedef Yıldız (Sağ) Hacimsel Kıyaslama", eng_sun: "GÜNEŞ (Referans)", eng_rad: "Yarıçap:", eng_temp: "Sıcaklık:", eng_hint: "🖱️ tekerleği geriye doğru kaydırarak (zoom-out) hedef yıldızı keşfet!", sb_title: "🌌 Kozmik Simülatör (Tanrı Modu)", sb_hint: "🖱️ Mouse ile döndür ve yakınlaş", sb_mass: "Kütle (M☉):", sb_rad: "Yarıçap (R☉):", sb_temp: "Yüzey Sıcaklığı (K):", sb_rot: "Dönüş Hızı (km/s):", sb_glow: "Işıma Parlaklığı:", sb_time: "⏳ Zamanı İleri Sar (Milyon Yıl):", sb_h: "Başlangıç Hidrojen (H):", sb_he: "Başlangıç Helyum (He):", sb_c: "Başlangıç Karbon (C):", sb_o: "Başlangıç Oksijen (O):", sb_fe: "Başlangıç Demir (Fe):", fate_bh: "💀 SÜPERNOVA: KARA DELİK", fate_ns: "💥 SÜPERNOVA: NÖTRON YILDIZI", fate_wd: "⚪ BULUTSU: BEYAZ CÜCE", fate_main: "✨ DURUM: STABİL (ANA DİZİ)",
+                mission_badge: "🌟 BİLGİ", mission_menu_title: "PROJENİN AMACI", mission_menu_desc: "Amatör astronomiyi mühendislikle birleştiren bu sistemin asıl vizyonu.", mission_aim_title: "🎯 Projenin Misyonu", mission_aim_desc: "Finder 2.0, gökyüzü gözlemlerini şansa bırakmak istemeyenler için tasarlandı. Gerçek zamanlı sensör verileri, kuantum spektrum analizleri ve yörünge mekaniklerini tek bir akıllı panelde birleştirerek; amatör astronomiyi profesyonel ve veri odaklı bir bilimsel deneyime dönüştürmeyi amaçlıyoruz.", mission_beta_title: "⚠️ Sistem Durumu & Bilgilendirme", mission_beta_desc: "Bu sistem şu anda <strong>Açık Beta (Prototip v2.0)</strong> aşamasındadır. Sağlanan telemetri verileri, yaşam döngüsü analizleri ve yörünge simülasyonları yüksek doğruluklu algoritmalarla hesaplansa da; profesyonel uzay ajanslarının anlık verilerinin doğrudan yerine kullanılamaz. Stabilizasyon süreci devam etmektedir."
+            },
+            en: { 
+                main_title: "ADVANCED SKY ANALYSIS", main_desc1: "Finder 2.0 System is an advanced sky analysis tool combining amateur astronomy with engineering.", main_desc2: "It calculates optimal observation conditions by processing environmental sensors and orbit algorithms.", mod1_desc: "Direction finding system based on Polaris reference.", mod2_desc: "Observation panel analyzing real-time weather, lunar illumination, dawn time, and the target's periodic graph.", mod3_desc: "Deep space analysis of mass, temperature, lifecycle, and distance.", mod4_desc: "Quantum spectrum analysis, elemental structure, and thermal radiation.", mod5_desc: "Play with the star's fate by bending mass, rotation, and time!", sb_menu_title: "GOD MODE (SANDBOX)", back_btn: "◄ Back to Home", search_ph: "Enter celestial object (e.g. Polaris)...", btn_target: "Target", btn_analyze: "Analyze", loading: "Calculating...", wait: "Awaiting Data...", target_label: "Tracked Target:", hf_title: "Manual Targeting Module", hf_guide: "🎯 Sky Finding Guide", hf_step1: "Face exact <strong>NORTH</strong> and find <strong>Polaris</strong>.", hf_simbad: "📡 SIMBAD Telemetry", hf_mag: "Visual Magnitude (V):", hf_status: "System Status:", dash_title: "Observation Analysis Panel", card1_title: "🌍 Sensor & Weather", temp: "Temperature:", weather: "Weather:", cloud: "Cloud Cover:", card2_title: "🌟 Illumination & Suggestions", moon_ill: "Moon Brightness:", moon_sep: "Angular Distance:", obs: "Suggested Obs:", dawn: "Dawn Time:", graph_title: "📈 Movement Between Rise and Set (24 Hours)", tm_title: "Deep Space Telemetry", tm_class: "Spectral Class", tm_phys: "🔥 Physical & Temperature Analysis", tm_temp: "Surface Temp:", tm_mass: "Estimated Mass:", tm_rad: "Estimated Radius:", tm_orbit: "🪐 Holographic Orbit Radar", tm_orbit_desc: "If replacing the Sun, which planets would it swallow?", tm_life: "⏳ Life Cycle Analysis", tm_life_tot: "Total Lifespan:", tm_life_left: "Time Remaining:", tm_life_prog: "Life Progress:", tm_death: "Expected End:", tm_dist: "🚀 Distance & Travel Analysis", tm_ly: "Distance in Light Years:", tm_pc: "Parsecs (pc):", tm_travel: "Travel Time:", tm_birth: "Birth", tm_end: "Death", tm_rad_title: "Star Radius", sp_title: "Quantum & Spectral Analysis", sp_wien_lbl: "Wien Peak Wavelength", sp_chem: "🧪 Chemical Composition (by Mass)", sp_wave: "🌈 Light & Wavelength Dist.", sp_wave_desc: "Thermal radiation percentages calculated via Planck spectrum.", sp_vis: "Visible Light (VIS)", sp_ir: "Infrared (IR)", cls_v: "Main Sequence (V)", cls_iv: "Subgiant (IV)", cls_iii: "Giant (III)", cls_ii: "Bright Giant (II)", cls_i: "Supergiant (I)", cls_unk: "Unknown", sun_k: "K", sun_hot: "~{0} - {1}x hotter than the Sun.", sun_cold: "~{0} - {1}x colder than the Sun.", sun_sim: "Similar temp to the Sun.", rad_big: "~{0} - {1}x larger than the Sun.", rad_small: "~{0} - {1}x smaller than the Sun.", rad_sim: "Similar size to the Sun.", yr_b: " billion yrs", yr_m: " million yrs", yr_k: " thousand yrs", yr: " yrs", d_bh: "Black Hole (Supernova)", d_ns: "Neutron Star (Supernova)", d_wd: "White Dwarf (Planetary Nebula)", d_rd: "Red Dwarf (Slow fade)", p_mercury: "Mercury", p_venus: "Venus", p_earth: "Earth", p_mars: "Mars", p_jupiter: "Jupiter", msg_swallowed: "SWALLOWED", msg_safe: "SAFE", elem_h: "Hydrogen", elem_he: "Helium", elem_met: "Metals (O, C, Ne, Fe...)", src: "Source", btn_3d: "Live 3D Engine", btn_2d: "2D RADAR", eng_title: "Live Stellar Engine", eng_desc: "Volumetric Comparison of the Sun (Left) and Target Star (Right)", eng_sun: "SUN (Reference)", eng_rad: "Radius:", eng_temp: "Temperature:", eng_hint: "🖱️ scroll wheel to zoom-out and discover the target star!", sb_title: "🌌 Cosmic Simulator (God Mode)", sb_hint: "🖱️ Mouse to rotate and zoom", sb_mass: "Mass (M☉):", sb_rad: "Radius (R☉):", sb_temp: "Surface Temp (K):", sb_rot: "Rotation Speed (km/s):", sb_glow: "Corona Glow:", sb_time: "⏳ Fast Forward Time (Million Yrs):", sb_h: "Initial Hydrogen (H):", sb_he: "Initial Helium (He):", sb_c: "Initial Carbon (C):", sb_o: "Initial Oxygen (O):", sb_fe: "Initial Iron (Fe):", fate_bh: "💀 SUPERNOVA: BLACK HOLE", fate_ns: "💥 SUPERNOVA: NEUTRON STAR", fate_wd: "⚪ NEBULA: WHITE DWARF", fate_main: "✨ STATUS: STABLE (MAIN SEQ)",
+                mission_badge: "🌟 INFO", mission_menu_title: "PROJECT MISSION", mission_menu_desc: "The core vision of this system combining amateur astronomy with engineering.", mission_aim_title: "🎯 Project Mission", mission_aim_desc: "Finder 2.0 is designed for those who don't want to leave sky observations to chance. By combining real-time sensor data, quantum spectrum analyses, and orbital mechanics in a single smart panel, we aim to transform amateur astronomy into a professional, data-driven scientific experience.", mission_beta_title: "⚠️ System Status & Notice", mission_beta_desc: "This system is currently in <strong>Open Beta (Prototype v2.0)</strong>. Although telemetry data, life cycle analyses, and orbit simulations are calculated using high-precision algorithms, they cannot directly replace real-time data from professional space agencies. Stabilization is ongoing."
+            }
+        };
+
+        let currentLang = 'tr'; let lastHfData = null; let lastTmData = null; let lastSpData = null; let animFrame = null; let chemChart = null; let myChart = null;
+        let scene, camera, renderer, controls, sunMesh, sunGlow, targetMesh, targetGlow, engineAnimId;
+
+        function setHTML(id, text) { const el = document.getElementById(id); if(el) el.innerHTML = text; }
+        
+        function openPage(pageId) { 
+            document.getElementById('landing-page').style.display = 'none';
+            document.querySelectorAll('.page').forEach(page => page.style.display = 'none');
+            const targetEl = document.getElementById(pageId);
+            if(targetEl) targetEl.style.display = 'block'; 
+            window.scrollTo(0,0); 
+        }
+
+        function formatVal(v) { return v ? v.toLocaleString('en-US', {maximumFractionDigits: 1}) : "--"; }
+        function formatYr(val, l) { if(!val) return "--"; if(val >= 1e9) return (val/1e9).toFixed(1) + dict[l].yr_b; if(val >= 1e6) return (val/1e6).toFixed(1) + dict[l].yr_m; if(val >= 1e3) return (val/1e3).toFixed(0) + dict[l].yr_k; return val.toFixed(0) + dict[l].yr; }
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.getElementById('btn-tr').classList.toggle('active', lang === 'tr'); document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+            
+            ['main_title','main_desc1','main_desc2','mod1_desc','mod2_desc','mod3_desc','mod4_desc','mod5_desc','sb_menu_title','hf_title','hf_guide','hf_step1','hf_simbad','hf_mag','hf_status','dash_title','card1_title','temp','weather','cloud','card2_title','moon_ill','moon_sep','obs','dawn','graph_title', 'tm_title','tm_class','tm_phys','tm_temp','tm_mass','tm_rad','tm_orbit','tm_orbit_desc','tm_life','tm_life_tot','tm_life_left','tm_life_prog','tm_death','tm_dist','tm_ly','tm_pc','tm_travel', 'tm_birth', 'tm_end', 'tm_rad_title', 'sp_title', 'sp_wien_lbl', 'sp_chem', 'sp_wave', 'sp_wave_desc', 'sp_vis', 'sp_ir', 'btn_3d', 'btn_2d', 'eng_title', 'eng_desc', 'eng_sun', 'eng_hint', 'sb_title', 'sb_hint', 'sb_mass', 'sb_rad', 'sb_temp', 'sb_rot', 'sb_glow', 'sb_time', 'sb_h', 'sb_he', 'sb_o', 'sb_c', 'sb_fe', 'mission_badge', 'mission_menu_title', 'mission_menu_desc', 'mission_aim_title', 'mission_aim_desc', 'mission_beta_title', 'mission_beta_desc'].forEach(k => { setHTML(`t-${k.replace(/_/g,'-')}`, dict[lang][k]); });
+            
+            setHTML('t-eng-rad-lbl1', dict[lang].eng_rad); setHTML('t-eng-temp-lbl1', dict[lang].eng_temp); setHTML('t-eng-rad-lbl2', dict[lang].eng_rad); setHTML('t-eng-temp-lbl2', dict[lang].eng_temp);
+            document.querySelectorAll('.t-back-btn').forEach(el => el.innerHTML = dict[lang].back_btn); document.querySelectorAll('.t-target-label').forEach(el => el.innerHTML = dict[lang].target_label); document.querySelectorAll('.t-loading').forEach(el => el.innerHTML = dict[lang].loading); document.querySelectorAll('.t-btn-target').forEach(el => el.innerHTML = dict[lang].btn_target); document.querySelectorAll('.t-btn-analyze').forEach(el => el.innerHTML = dict[lang].btn_analyze);
+            ['hfInput','targetInput','tmInput','spInput', 'sbInput'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).placeholder = dict[lang].search_ph; });
+            if(lang === 'en') { setHTML('t-hf-step2-1',"Look"); setHTML('t-hf-step2-2',""); setHTML('t-hf-step2-3',"from Polaris."); setHTML('t-hf-step3-1',"Then shift"); setHTML('t-hf-step3-2',""); setHTML('t-hf-step3-3',"from that point."); } else { setHTML('t-hf-step2-1',"Polaris'ten tam"); setHTML('t-hf-step2-2',"kadar"); setHTML('t-hf-step2-3',"bak."); setHTML('t-hf-step3-1',"Sonra o noktadan"); setHTML('t-hf-step3-2',"kadar"); setHTML('t-hf-step3-3',"doğru kay."); }
+            if(lastHfData) applyHfData(lastHfData, lang); else setHTML('hfDikeyOlcum', lang==='en'?"[0 Spans]":"[0 Karış]");
+            if(lastTmData) applyTmData(lastTmData, lang);
+            if(lastSpData) applySpData(lastSpData, lang);
+            if(document.getElementById('sb_time')) updateSandbox(); 
+            let t1 = document.getElementById('hfTargetName').innerText;
+            if(t1 === "BEKLENİYOR..." || t1 === "AWAITING...") { ['hfTargetName','hfYorum','targetNameDisplay','scoreLabel','tmTargetName','tmClassLabel','tmClass','spTargetName'].forEach(id => setHTML(id, dict[lang].wait)); }
+        }
+
+        function flipTo3D() {
+            document.getElementById('orbit-flip-container').classList.add('flipped');
+            if(!scene) init3DEngine();
+            if(lastTmData) update3DScene(lastTmData, document.getElementById('tmInput').value);
+            setTimeout(() => { const container = document.getElementById('engine-container'); if(camera && renderer) { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); } }, 300);
+        }
+
+        function flipTo2D() { document.getElementById('orbit-flip-container').classList.remove('flipped'); }
+
+        async function analyzeHandFinder() { const v = document.getElementById('hfInput').value; if(!v) return; setHTML('hfTargetName', v.toUpperCase()); document.getElementById('hfLoadingText').style.display = 'inline-block'; try { const res = await fetch(https://manual-star-finder-1.onrender.com
+
+/api/handfinder?target_name=${v}`); const data = await res.json(); if(data.error) throw new Error(data.error); lastHfData = data; applyHfData(data, currentLang); } catch (e) { alert("Hata:\n" + e.message); } document.getElementById('hfLoadingText').style.display = 'none'; }
+        function applyHfData(d, l) { setHTML('hfDikeyOlcum', l==='en'?`[${d.dikey.karis} Spans, ${d.dikey.yumruk} Fists]`: `[${d.dikey.karis} Karış, ${d.dikey.yumruk} Yumruk]`); setHTML('hfYatayOlcum', l==='en'?`[${d.yatay.karis} Spans, ${d.yatay.yumruk} Fists]`: `[${d.yatay.karis} Karış, ${d.yatay.yumruk} Yumruk]`); setHTML('hfDikeyYon', d.d_yon === "YUKARISINA" ? (l==='en'?"UP":"YUKARISINA") : (l==='en'?"DOWN":"AŞAĞISINA")); setHTML('hfYatayYon', d.y_yon === "SAĞINA" ? (l==='en'?"RIGHT":"SAĞINA") : (l==='en'?"LEFT":"SOLUNA")); setHTML('hfMag', d.mag); let htmlY = d.yorum; if(htmlY.includes("MÜKEMMEL")) { setHTML('hfYorum', l==='en'?"EXCELLENT":"MÜKEMMEL"); document.getElementById('hfYorum').style.color = "#3fb950"; } else if(htmlY.includes("İYİ")) { setHTML('hfYorum', l==='en'?"GOOD":"İYİ"); document.getElementById('hfYorum').style.color = "#3fb950"; } else if(htmlY.includes("ORTA")) { setHTML('hfYorum', l==='en'?"AVERAGE":"ORTA"); document.getElementById('hfYorum').style.color = "#e3b341"; } else { setHTML('hfYorum', l==='en'?"POOR":"ZAYIF"); document.getElementById('hfYorum').style.color = "#f85149"; } }
+        
+        async function analyzeTarget() { const v = document.getElementById('targetInput').value; if(!v) return; setHTML('targetNameDisplay', v.toUpperCase()); document.getElementById('loadingText').style.display = 'inline-block'; try { const res = await fetch(`https://manual-star-finder-1.onrender.com
+
+/api/analyze?target_name=${v}`); const data = await res.json(); if(data.error) throw new Error(data.error); setHTML('tempVal', data.temp + "°C"); setHTML('weatherVal', data.weather); setHTML('cloudVal', "%" + data.cloud); setHTML('moonIllum', "%" + data.moon_ill); setHTML('moonSep', data.moon_sep + "°"); setHTML('obsTime', data.obs_time); setHTML('dawnTime', data.dawn_time); const len = 125.6; const p = document.getElementById('gaugePath'); p.style.transition = 'none'; p.style.strokeDashoffset = len; setTimeout(() => { p.style.transition = 'stroke-dashoffset 0.5s'; p.style.strokeDashoffset = len - (data.score/100)*len; setHTML('scoreText', data.score); let c = data.score < 30 ? '#f85149' : data.score < 50 ? '#d29922' : data.score < 80 ? '#e3b341' : '#3fb950'; p.style.stroke = c; document.getElementById('scoreText').style.color = c; setHTML('scoreLabel', data.score<30?(currentLang==='tr'?"YAPILAMAZ":"NO GO"):data.score<80?(currentLang==='tr'?"ORTALAMA":"AVERAGE"):(currentLang==='tr'?"MÜKEMMEL":"PERFECT")); }, 50); if(myChart) myChart.destroy(); myChart = new Chart(document.getElementById('astroChart').getContext('2d'), { type: 'line', data: { labels: data.graph_labels, datasets: [{ label: v.toUpperCase(), data: data.target_y, borderColor: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', fill: true, tension: 0.4, pointRadius: 0}, { label: currentLang==='tr'?'Ay':'Moon', data: data.moon_y, borderColor: '#8b949e', borderDash: [5,5], tension: 0.4, pointRadius: 0}, { label: 'Ufuk', data: Array(data.graph_labels.length).fill(0), borderColor: '#58a6ff', borderDash: [10,5], pointRadius: 0}] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } }); } catch(e) { alert("Hata:\n" + e.message); } document.getElementById('loadingText').style.display = 'none'; }
+        
+        async function analyzeTelemetry() { const v = document.getElementById('tmInput').value; if(!v) return; setHTML('tmTargetName', v.toUpperCase()); document.getElementById('tmLoadingText').style.display = 'inline-block'; try { const res = await fetch(`https://manual-star-finder-1.onrender.com
+
+/api/telemetry?target_name=${v}`); const data = await res.json(); if(data.error) throw new Error(data.error); lastTmData = data; applyTmData(data, currentLang); } catch(e) { alert("Hata:\n" + e.message); } document.getElementById('tmLoadingText').style.display = 'none'; }
+        function applyTmData(d, l) {
+            setHTML('tmClass', d.spectral.raw); setHTML('tmClassLabel', dict[l][`cls_${d.spectral.class_id}`] || dict[l].cls_unk);
+            if(d.temp.lo) { setHTML('tmTemp', `~${formatVal(d.temp.lo)} - ${formatVal(d.temp.hi)} ${dict[l].sun_k}`); let msg = d.temp.lo > 5778 ? dict[l].sun_hot : (d.temp.hi < 5778 ? dict[l].sun_cold : dict[l].sun_sim); if(msg.includes('{0}')) msg = msg.replace('{0}', (d.temp.lo > 5778 ? d.temp.lo/5778 : 5778/d.temp.hi).toFixed(1)).replace('{1}', (d.temp.hi > 5778 ? d.temp.hi/5778 : 5778/d.temp.lo).toFixed(1)); setHTML('tmTempComp', msg); } else { setHTML('tmTemp', "--"); setHTML('tmTempComp', "--"); }
+            if(d.mass.lo) setHTML('tmMass', `~${d.mass.lo.toFixed(1)} - ${d.mass.hi.toFixed(1)} M☉`); else setHTML('tmMass', "--");
+            if(d.radius.lo) { let radStr = `~${d.radius.lo.toFixed(1)} - ${d.radius.hi.toFixed(1)} R☉`; setHTML('tmRad', radStr); setHTML('tmOrbitRadVal', radStr); let msg = d.radius.lo > 1.05 ? dict[l].rad_big : (d.radius.hi < 0.95 ? dict[l].rad_small : dict[l].rad_sim); if(msg.includes('{0}')) msg = msg.replace('{0}', (d.radius.lo > 1.05 ? d.radius.lo : 1/d.radius.hi).toFixed(1)).replace('{1}', (d.radius.hi > 1.05 ? d.radius.hi : 1/d.radius.lo).toFixed(1)); setHTML('tmRadComp', msg); setHTML('tmOrbitRadComp', msg); document.getElementById('tmOrbitStatsPanel').style.display = 'block'; } else { setHTML('tmRad', "--"); setHTML('tmRadComp', "--"); document.getElementById('tmOrbitStatsPanel').style.display = 'none'; }
+            if(d.life.total) { setHTML('tmLifeTot', "~" + formatYr(d.life.total, l)); setHTML('tmLifeLeft', `~${formatYr(d.life.left_lo, l)} - ${formatYr(d.life.left_hi, l)}`); let pct = ((d.life.p_lo + d.life.p_hi)/2).toFixed(1); document.getElementById('tmLifeBar').style.width = pct + "%"; setHTML('tmLifePct', `%${pct}`); setHTML('tmDeath', dict[l][`d_${d.life.death}`] || "--"); } else { ['tmLifeTot','tmLifeLeft','tmDeath'].forEach(id => setHTML(id, "--")); document.getElementById('tmLifeBar').style.width = "0%"; setHTML('tmLifePct', "0%"); }
+            if(d.dist.ly_lo) { setHTML('tmLy', `~${formatVal(d.dist.ly_lo)} - ${formatVal(d.dist.ly_hi)}`); setHTML('tmPc', `~${formatVal(d.dist.pc_lo)} - ${formatVal(d.dist.pc_hi)}`); setHTML('tmTravelLight', "~" + formatYr(d.dist.ly_lo, l)); let voyYr = (d.dist.km_ort / 61200) / (365.25 * 24); setHTML('tmTravelVoy', "~" + formatYr(voyYr, l)); } else { ['tmLy','tmPc','tmTravelLight','tmTravelVoy'].forEach(id => setHTML(id, "--")); }
+            initOrbitRadar(d, l); if(document.getElementById('orbit-flip-container').classList.contains('flipped')) { update3DScene(d, document.getElementById('tmInput').value); }
+        }
+        
+        function initOrbitRadar(d, l) {
+            if(animFrame) cancelAnimationFrame(animFrame);
+            const canvas = document.getElementById('orbitCanvas'); const ctx = canvas.getContext('2d');
+            const container = canvas.parentElement; canvas.width = container.clientWidth; canvas.height = container.clientHeight || 500;
+            const w = canvas.width; const h = canvas.height; const cx = w / 2; const cy = h / 2;
+            planets = [ {id: 'mercury', au: 0.387, col: '#a8a8a8', r: 3, ang: Math.random()*Math.PI*2, spd: 0.015}, {id: 'venus', au: 0.723, col: '#e0c9a6', r: 4.5, ang: Math.random()*Math.PI*2, spd: 0.01}, {id: 'earth', au: 1.0, col: '#4b90e2', r: 5, ang: Math.random()*Math.PI*2, spd: 0.008}, {id: 'mars', au: 1.524, col: '#c1440e', r: 4, ang: Math.random()*Math.PI*2, spd: 0.006}, {id: 'jupiter', au: 5.203, col: '#d39c7e', r: 8, ang: Math.random()*Math.PI*2, spd: 0.003} ];
+            let starAu = 0.00465; let temp = 5778;
+            if (d) { if (d.radius && d.radius.lo) starAu = ((d.radius.lo + d.radius.hi) / 2) * 0.00465047; if (d.temp && d.temp.lo) temp = (d.temp.lo + d.temp.hi) / 2; else if (d.spectral && d.spectral.raw) { let s = d.spectral.raw.toUpperCase(); if(s.includes('O')) temp = 35000; else if(s.includes('B')) temp = 15000; else if(s.includes('A')) temp = 9000; else if(s.includes('F')) temp = 7000; else if(s.includes('G')) temp = 5500; else if(s.includes('K')) temp = 4500; else if(s.includes('M')) temp = 3000; } }
+            let sCol = '#fff4ea'; if(temp >= 20000) sCol = '#a1b8ff'; else if(temp >= 10000) sCol = '#d1dcff'; else if(temp >= 6000) sCol = '#ffffff'; else if(temp >= 5000) sCol = '#fff4ea'; else if(temp >= 3500) sCol = '#ffca4d'; else sCol = '#ff5e5e';
+            function auToPx(au) { if (au <= 0) return 0; let scale = Math.min(cx, cy) - 40; if (starAu > 5.5) { return (au / (starAu * 1.1)) * scale; } else { if (au <= 0.387) return 40; if (au <= 0.723) return 70; if (au <= 1.0) return 100; if (au <= 1.524) return 130; if (au <= 5.203) return 200; return 200 + (au - 5.2) * 10; } }
+            const starRPx = auToPx(starAu); let time = 0;
+            function draw() {
+                time++; ctx.fillStyle = 'rgba(13, 21, 34, 0.3)'; ctx.fillRect(0, 0, w, h);
+                ctx.save(); ctx.translate(cx, cy); ctx.rotate(time * 0.01); let radarGrad = ctx.createLinearGradient(0, 0, 0, -Math.max(w,h)); radarGrad.addColorStop(0, 'rgba(88, 166, 255, 0.15)'); radarGrad.addColorStop(1, 'rgba(88, 166, 255, 0)'); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -Math.max(w,h)); ctx.lineTo(Math.max(w,h)*0.2, -Math.max(w,h)); ctx.fillStyle = radarGrad; ctx.fill(); ctx.restore();
+                ctx.lineWidth = 1; planets.forEach(p => { ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.arc(cx, cy, auToPx(p.au), 0, 2 * Math.PI); ctx.stroke(); });
+                ctx.shadowBlur = 40; ctx.shadowColor = sCol; let sGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, starRPx); sGrad.addColorStop(0, '#ffffff'); sGrad.addColorStop(0.3, sCol); sGrad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.beginPath(); ctx.fillStyle = sGrad; ctx.arc(cx, cy, starRPx * 1.5, 0, 2 * Math.PI); ctx.fill(); ctx.shadowBlur = 0;
+                ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 80, 80, 0.4)'; ctx.setLineDash([5, 5]); ctx.arc(cx, cy, starRPx, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+                planets.forEach(p => { p.ang += p.spd; const rPx = auToPx(p.au); const px = cx + Math.cos(p.ang) * rPx; const py = cy + Math.sin(p.ang) * rPx; const isDead = starRPx >= rPx; ctx.beginPath(); if(isDead) { ctx.fillStyle = time % 20 < 10 ? 'rgba(255, 80, 80, 0.8)' : 'rgba(255, 50, 50, 0.3)'; ctx.shadowBlur = 10; ctx.shadowColor = '#f85149'; } else { ctx.fillStyle = p.col; ctx.shadowBlur = 15; ctx.shadowColor = p.col; } ctx.arc(px, py, p.r, 0, 2 * Math.PI); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = isDead ? 'rgba(255, 80, 80, 0.9)' : 'rgba(200, 210, 220, 0.8)'; ctx.font = isDead ? "bold 11px Courier New" : "11px Tahoma"; let label = dict[l][`p_${p.id}`]; if(isDead && d) label += ` [${dict[l].msg_swallowed}]`; ctx.fillText(label, px + 10, py + 4); });
+                animFrame = requestAnimationFrame(draw);
+            }
+            draw();
+        }
+        
+        function init3DEngine() {
+            const container = document.getElementById('engine-container'); const canvas = document.getElementById('canvas3D');
+            scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x05080f, 0.001);
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 500000);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true }); renderer.setSize(container.clientWidth, container.clientHeight); renderer.setPixelRatio(window.devicePixelRatio);
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.minDistance = 1.2; controls.maxDistance = 250000; 
+            scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+            const sunGeo = new THREE.SphereGeometry(1, 32, 32); const sunMat = new THREE.MeshBasicMaterial({ color: 0xffe082 });
+            sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            sunGlow = new THREE.Mesh(new THREE.SphereGeometry(1.25, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffca42, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending })); sunMesh.add(sunGlow);
+            scene.add(sunMesh);
+            function animate() { engineAnimId = requestAnimationFrame(animate); controls.update(); if(sunMesh) sunMesh.rotation.y += 0.005; if(targetMesh) targetMesh.rotation.y += 0.0015; renderer.render(scene, camera); }
+            animate();
+        }
+        
+        function update3DScene(d, targetName) {
+            if(!scene) init3DEngine();
+            let rad = 1.0; let temp = 5778;
+            if (d.radius && d.radius.lo) rad = (d.radius.lo + d.radius.hi) / 2;
+            if (d.temp && d.temp.lo) temp = (d.temp.lo + d.temp.hi) / 2;
+            else if (d.spectral && d.spectral.raw) { let s = d.spectral.raw.toUpperCase(); if(s.includes('O')) temp = 35000; else if(s.includes('B')) temp = 15000; else if(s.includes('A')) temp = 9000; else if(s.includes('F')) temp = 7000; else if(s.includes('G')) temp = 5500; else if(s.includes('K')) temp = 4500; else if(s.includes('M')) temp = 3000; }
+            document.getElementById('engTargetPanel').style.display = 'block'; document.getElementById('engTargetName').innerText = targetName.toUpperCase(); document.getElementById('engRadVal').innerText = `~${rad.toFixed(1)} R☉`; document.getElementById('engTempVal').innerText = `~${temp.toFixed(0)} K`;
+            let tColor = 0xfff4ea; let tGlowColor = 0xfff4ea; document.getElementById('engTempVal').style.color = '#fff4ea'; document.getElementById('engTargetName').style.color = '#fff4ea';
+            if(temp >= 20000) { tColor = 0x8ab2ff; tGlowColor = 0x3d74f2; document.getElementById('engTempVal').style.color = '#8ab2ff'; document.getElementById('engTargetName').style.color = '#8ab2ff';} else if(temp >= 10000) { tColor = 0xc2d1ff; tGlowColor = 0x80aaff; document.getElementById('engTempVal').style.color = '#c2d1ff'; document.getElementById('engTargetName').style.color = '#c2d1ff';} else if(temp >= 6000) { tColor = 0xffffff; tGlowColor = 0xeaeaea; document.getElementById('engTempVal').style.color = '#ffffff'; document.getElementById('engTargetName').style.color = '#ffffff';} else if(temp >= 5000) { tColor = 0xfff4ea; tGlowColor = 0xffcc80; } else if(temp >= 3500) { tColor = 0xffca4d; tGlowColor = 0xff9100; document.getElementById('engTempVal').style.color = '#ffca4d'; document.getElementById('engTargetName').style.color = '#ffca4d';} else { tColor = 0xff4d4d; tGlowColor = 0xc91e1e; document.getElementById('engTempVal').style.color = '#ff4d4d'; document.getElementById('engTargetName').style.color = '#ff4d4d';}
+            if(targetMesh) { scene.remove(targetMesh); targetMesh.geometry.dispose(); targetMesh.material.dispose(); }
+            targetMesh = new THREE.Mesh(new THREE.SphereGeometry(rad, 64, 64), new THREE.MeshBasicMaterial({ color: tColor }));
+            targetGlow = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.18, 64, 64), new THREE.MeshBasicMaterial({ color: tGlowColor, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })); targetMesh.add(targetGlow);
+            targetMesh.position.set(0, 0, 0); scene.add(targetMesh); 
+            sunMesh.position.set(- (rad + 1.5 + 1), 0, 0);
+            const camDist = Math.max(5, rad * 3);
+            camera.position.set(sunMesh.position.x / 2, 0, camDist); 
+            controls.target.set(sunMesh.position.x / 2, 0, 0); 
+            controls.update();
+        }
+        
+        async function analyzeSpectroscopy() { const v = document.getElementById('spInput').value; if(!v) return; setHTML('spTargetName', v.toUpperCase()); document.getElementById('spLoadingText').style.display = 'inline-block'; try { const res = await fetch(https://manual-star-finder-1.onrender.com
+
+/api/spectroscopy?target_name=${v}`); const data = await res.json(); if(data.error) throw new Error(data.error); lastSpData = data; applySpData(data, currentLang); } catch(e) { alert("Hata:\n" + e.message); } document.getElementById('spLoadingText').style.display = 'none'; }
+        function applySpData(d, l) {
+            setHTML('spWien', d.wien_nm.toFixed(0) + " nm"); setHTML('spUvPct', `%${d.uv_pct.toFixed(1)}`); document.getElementById('spUvBar').style.width = d.uv_pct + "%"; setHTML('spVisPct', `%${d.vis_pct.toFixed(1)}`); document.getElementById('spVisBar').style.width = d.vis_pct + "%"; setHTML('spIrPct', `%${d.ir_pct.toFixed(1)}`); document.getElementById('spIrBar').style.width = d.ir_pct + "%"; setHTML('spChemSource', `${dict[l].src}: ` + d.feh_source); setHTML('spChemMainVal', `%${d.chem.h.toFixed(1)}`); setHTML('spChemMainLbl', dict[l].elem_h);
+            const ctx = document.getElementById('chemChart').getContext('2d'); if (chemChart) chemChart.destroy(); Chart.defaults.color = '#8b949e'; chemChart = new Chart(ctx, { type: 'doughnut', data: { labels: [dict[l].elem_h, dict[l].elem_he, dict[l].elem_met], datasets: [{ data: [d.chem.h, d.chem.he, d.chem.o + d.chem.c + d.chem.ne + d.chem.fe + d.chem.si + d.chem.mg + d.chem.other], backgroundColor: ['#58a6ff', '#e3b341', '#f85149'], borderColor: '#161b22', borderWidth: 2, hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: {family: 'Segoe UI', size: 11} } }, tooltip: { callbacks: { label: function(context) { return " " + context.label + ": %" + Number(context.raw).toFixed(2); } } } } } });
+        }
+
+        window.addEventListener('resize', () => { 
+            if(document.getElementById('telemetry-page').style.display === 'block') { initOrbitRadar(lastTmData, currentLang); const container = document.getElementById('engine-container'); if(camera && renderer) { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); } }
+            if(document.getElementById('sandbox-page').style.display === 'block') { const sbContainer = document.getElementById('sb-engine-container'); if(sbCamera && sbRenderer) { sbCamera.aspect = sbContainer.clientWidth / sbContainer.clientHeight; sbCamera.updateProjectionMatrix(); sbRenderer.setSize(sbContainer.clientWidth, sbContainer.clientHeight); } }
+        });
+
+        // ================= 🔥 MODÜL 5: KOZMİK SİMÜLATÖR (TANRI MODU) 🔥 =================
+        let sbScene, sbCamera, sbRenderer, sbControls, sbAnimId;
+        let sbStar, sbGlow, sbAccretion;
+        let isStarDead = false;
+        let chemState = { sb_h2: 73.5, sb_he: 24.8, sb_o: 0.8, sb_c: 0.3, sb_fe: 0.1 };
+
+        async function analyzeSandbox() {
+            const v = document.getElementById('sbInput').value; if(!v) return;
+            document.getElementById('sbTargetName').innerText = v.toUpperCase();
+            document.getElementById('sbLoadingText').style.display = 'inline-block'; 
+            try { 
+                const [resTm, resSp] = await Promise.all([
+                    fetch(https://manual-star-finder-1.onrender.com
+
+/api/telemetry?target_name=${v}`),
+                    fetch(`https://manual-star-finder-1.onrender.com
+
+/api/spectroscopy?target_name=${v}`)
+                ]);
+                const dataTm = await resTm.json(); const dataSp = await resSp.json(); 
+                if(dataTm.error || dataSp.error) throw new Error(dataTm.error || dataSp.error); 
+
+                if(dataTm.mass.lo) document.getElementById('sb_mass').value = ((dataTm.mass.lo + dataTm.mass.hi) / 2).toFixed(1);
+                if(dataTm.radius.lo) document.getElementById('sb_rad').value = ((dataTm.radius.lo + dataTm.radius.hi) / 2).toFixed(1);
+                if(dataTm.temp.lo) document.getElementById('sb_temp').value = ((dataTm.temp.lo + dataTm.temp.hi) / 2).toFixed(0);
+                
+                if(dataSp.chem) {
+                    chemState = { sb_h2: dataSp.chem.h, sb_he: dataSp.chem.he, sb_o: dataSp.chem.o, sb_c: dataSp.chem.c, sb_fe: dataSp.chem.fe };
+                    document.getElementById('sb_h2').value = chemState.sb_h2.toFixed(2);
+                    document.getElementById('sb_he').value = chemState.sb_he.toFixed(2);
+                    document.getElementById('sb_o').value = chemState.sb_o.toFixed(2);
+                    document.getElementById('sb_c').value = chemState.sb_c.toFixed(2);
+                    document.getElementById('sb_fe').value = chemState.sb_fe.toFixed(2);
+                }
+                document.getElementById('sb_time').value = 0; 
+                updateSandbox();
+            } catch(e) { alert("Hata:\n" + e.message); } 
+            document.getElementById('sbLoadingText').style.display = 'none';
+        }
+
+        function handleChemChange(changedId, newVal) {
+            newVal = Math.max(0, Math.min(100, newVal)); 
+            const chemIds = ['sb_h2', 'sb_he', 'sb_o', 'sb_c', 'sb_fe'];
+            const others = chemIds.filter(id => id !== changedId);
+            let sumOthers = 0; others.forEach(id => sumOthers += chemState[id]);
+
+            if (sumOthers === 0) {
+                const share = (100 - newVal) / 4;
+                others.forEach(id => { chemState[id] = share; document.getElementById(id).value = share.toFixed(2); });
+            } else {
+                const scale = (100 - newVal) / sumOthers;
+                others.forEach(id => { chemState[id] = chemState[id] * scale; document.getElementById(id).value = chemState[id].toFixed(2); });
+            }
+            chemState[changedId] = newVal; document.getElementById(changedId).value = newVal.toFixed(2);
+        }
+
+        function initSandbox() {
+            if(sbScene) return; 
+            const container = document.getElementById('sb-engine-container');
+            sbScene = new THREE.Scene(); sbScene.fog = new THREE.FogExp2(0x05080f, 0.005);
+            sbCamera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.1, 10000);
+            sbCamera.position.set(0, 2, 15);
+            sbRenderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            sbRenderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(sbRenderer.domElement);
+            sbControls = new THREE.OrbitControls(sbCamera, sbRenderer.domElement); sbControls.enableDamping = true;
+            sbScene.add(new THREE.AmbientLight(0xffffff, 0.4));
+
+            sbStar = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.MeshBasicMaterial({color: 0xffff00}));
+            sbGlow = new THREE.Mesh(new THREE.SphereGeometry(1.15, 64, 64), new THREE.MeshBasicMaterial({color: 0xffff00, transparent:true, opacity:0.5, blending: THREE.AdditiveBlending}));
+            sbStar.add(sbGlow); sbScene.add(sbStar);
+
+            const ringGeo = new THREE.RingGeometry(1.5, 4, 64);
+            const ringMat = new THREE.MeshBasicMaterial({color: 0xff5500, side: THREE.DoubleSide, transparent:true, opacity:0.8, blending: THREE.AdditiveBlending});
+            sbAccretion = new THREE.Mesh(ringGeo, ringMat); sbAccretion.rotation.x = Math.PI / 2; sbAccretion.visible = false;
+            sbScene.add(sbAccretion);
+
+            document.getElementById('sb_time').step = "0.001";
+
+            const physSliders = ['sb_mass', 'sb_rad', 'sb_temp', 'sb_rot', 'sb_glow', 'sb_time'];
+            physSliders.forEach(id => { document.getElementById(id).addEventListener('input', updateSandbox); });
+
+            const chemSliders = ['sb_h2', 'sb_he', 'sb_o', 'sb_c', 'sb_fe'];
+            chemSliders.forEach(id => { document.getElementById(id).addEventListener('input', (e) => { handleChemChange(e.target.id, parseFloat(e.target.value)); updateSandbox(); }); });
+
+            function animate() {
+                sbAnimId = requestAnimationFrame(animate); sbControls.update();
+                if(!isStarDead) { sbStar.rotation.y += parseFloat(document.getElementById('sb_rot').value) / 5000; } 
+                else { sbAccretion.rotation.z -= 0.05; }
+                sbRenderer.render(sbScene, sbCamera);
+            }
+            animate(); updateSandbox();
+        }
+
+        function updateSandbox(e) {
+            const getVal = (id, def) => { const el = document.getElementById(id); return el ? parseFloat(el.value) : def; };
+            const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+
+            if(e && e.target && e.target.id === 'sb_mass') {
+                const massVal = parseFloat(e.target.value);
+                const radEl = document.getElementById('sb_rad'); if(radEl) radEl.value = Math.pow(massVal, 0.8).toFixed(1);
+                const tempEl = document.getElementById('sb_temp'); if(tempEl) tempEl.value = Math.min(40000, 5778 * Math.pow(massVal, 0.5)).toFixed(0);
+            }
+
+            const mass = getVal('sb_mass', 1);
+            const rad = getVal('sb_rad', 1);
+            const temp = getVal('sb_temp', 5778);
+            const rot = getVal('sb_rot', 2);
+            const glow = getVal('sb_glow', 50);
+            const time = getVal('sb_time', 0);
+
+            safeSet('sb_val_mass', mass.toFixed(1));
+            safeSet('sb_val_rad', rad.toFixed(1));
+            safeSet('sb_val_temp', temp.toFixed(0));
+            safeSet('sb_val_rot', rot);
+            safeSet('sb_val_glow', glow);
+
+            const maxLife = 10000 * Math.pow(mass, -2.5);
+            const timeEl = document.getElementById('sb_time');
+            if(timeEl) timeEl.max = maxLife;
+
+            let safeTime = time;
+            if (safeTime > maxLife) { safeTime = maxLife; if(timeEl) timeEl.value = maxLife; }
+            safeSet('sb_val_time', safeTime.toFixed(2));
+
+            const lifePct = Math.min(1, safeTime / maxLife);
+            let curH = chemState.sb_h2; let curHe = chemState.sb_he; let curO = chemState.sb_o; let curC = chemState.sb_c; let curFe = chemState.sb_fe;
+
+            if (safeTime > 0) {
+                let burnH = curH * lifePct; curH -= burnH; curHe += burnH;
+                if(lifePct > 0.8) {
+                    let burnHe = curHe * ((lifePct - 0.8) * 5); curHe -= burnHe; curC += burnHe * 0.4; curO += burnHe * 0.6;
+                    if(mass > 8 && lifePct > 0.95) { let burnO = curO * ((lifePct - 0.95) * 20); curO -= burnO; curFe += burnO; }
+                }
+            }
+
+            safeSet('sb_val_h2', Math.max(0, curH).toFixed(1));
+            safeSet('sb_val_he', Math.max(0, curHe).toFixed(1));
+            safeSet('sb_val_o', Math.max(0, curO).toFixed(1));
+            safeSet('sb_val_c', Math.max(0, curC).toFixed(1));
+            safeSet('sb_val_fe', Math.max(0, curFe).toFixed(1));
+
+            const fateText = document.getElementById('sb_fate_text');
+
+            if (safeTime >= maxLife || (curH <= 0 && curHe <= 0)) {
+                isStarDead = true; let l = currentLang;
+                if(mass > 25) {
+                    if(fateText) { fateText.innerText = dict[l].fate_bh; fateText.style.color = "#ff4d4d"; fateText.style.textShadow = "0 0 15px rgba(255, 77, 77, 0.6)"; }
+                    if(sbStar) { sbStar.scale.set(0.5, 0.5, 0.5); sbStar.material.color.setHex(0x000000); sbGlow.material.opacity = 0; sbAccretion.visible = true; sbAccretion.scale.set(mass/5, mass/5, mass/5); }
+                } else if(mass > 8) {
+                    if(fateText) { fateText.innerText = dict[l].fate_ns; fateText.style.color = "#c2d1ff"; fateText.style.textShadow = "0 0 15px rgba(194, 209, 255, 0.6)"; }
+                    if(sbStar) { sbStar.scale.set(0.1, 0.1, 0.1); sbStar.material.color.setHex(0xffffff); sbGlow.material.color.setHex(0x80aaff); sbGlow.material.opacity = 0.9; sbAccretion.visible = false; }
+                } else {
+                    if(fateText) { fateText.innerText = dict[l].fate_wd; fateText.style.color = "#ffffff"; fateText.style.textShadow = "0 0 15px rgba(255, 255, 255, 0.6)"; }
+                    if(sbStar) { sbStar.scale.set(0.2, 0.2, 0.2); sbStar.material.color.setHex(0xffffff); sbGlow.material.color.setHex(0xeaeaea); sbGlow.material.opacity = 0.3; sbAccretion.visible = false; }
+                }
+            } else {
+                isStarDead = false; if(sbAccretion) sbAccretion.visible = false;
+                
+                let hDepletion = Math.max(0, (73.5 - curH) / 73.5);
+                let visualAge = Math.min(1.0, Math.max(lifePct, hDepletion));
+                let swellFactor = 1.0 + (visualAge * 1.8);
+
+                if (visualAge > 0.5) {
+                    if(fateText) { fateText.innerText = "🔥 DURUM: KIRMIZI DEV (ŞİŞİYOR)"; fateText.style.color = "#ff7b54"; fateText.style.textShadow = "0 0 10px rgba(255, 123, 84, 0.4)"; }
+                } else {
+                    if(fateText) { fateText.innerText = dict[currentLang].fate_main; fateText.style.color = "#3fb950"; fateText.style.textShadow = "0 0 10px rgba(63, 185, 80, 0.4)"; }
+                }
+
+                let visualTemp = temp * (1.0 - (visualAge * 0.6));
+                let heavyMetals = curO + curC + curFe;
+                let visualGlow = (glow / 100) + (heavyMetals / 30);
+
+                if(sbStar) {
+                    const visualScale = Math.pow(rad, 0.4) * swellFactor;
+                    const flattening = 1 - (rot/600)*0.4;
+                    sbStar.scale.set(visualScale, visualScale * flattening, visualScale);
+                    
+                    let cHex = 0xfff4ea; let gHex = 0xfff4ea;
+                    if(visualTemp>=20000){cHex=0x8ab2ff; gHex=0x3d74f2;}
+                    else if(visualTemp>=10000){cHex=0xc2d1ff; gHex=0x80aaff;}
+                    else if(visualTemp>=6000){cHex=0xffffff; gHex=0xeaeaea;}
+                    else if(visualTemp>=5000){cHex=0xfff4ea; gHex=0xffcc80;}
+                    else if(visualTemp>=3500){cHex=0xffca4d; gHex=0xff9100;}
+                    else {cHex=0xff4d4d; gHex=0xc91e1e;}
+                    
+                    sbStar.material.color.setHex(cHex);
+                    sbGlow.material.color.setHex(gHex);
+                    sbGlow.material.opacity = Math.min(1.0, visualGlow);
+                }
+            }
+        }
+
+        window.onload = () => { initOrbitRadar(null, currentLang); }
+    </script>
+</body>
+</html>
