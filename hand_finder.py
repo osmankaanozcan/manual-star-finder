@@ -124,3 +124,4 @@ try:
 
 except Exception as e:
     print(messages[LANG]['simbad_error'])
+
