@@ -571,7 +571,7 @@
             scene.add(new THREE.AmbientLight(0xffffff, 0.2));
             const sunGeo = new THREE.SphereGeometry(1, 32, 32); const sunMat = new THREE.MeshBasicMaterial({ color: 0xffe082 });
             sunMesh = new THREE.Mesh(sunGeo, sunMat);
-            sunGlow = new THREE.Mesh(new THREE.SphereGeometry(1.25, 32, 32), new MeshBasicMaterial({ color: 0xffca42, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending })); sunMesh.add(sunGlow);
+            sunGlow = new THREE.Mesh(new THREE.SphereGeometry(1.25, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffca42, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending })); sunMesh.add(sunGlow);
             scene.add(sunMesh);
             function animate() { engineAnimId = requestAnimationFrame(animate); controls.update(); if(sunMesh) sunMesh.rotation.y += 0.005; if(targetMesh) targetMesh.rotation.y += 0.0015; renderer.render(scene, camera); }
             animate();
