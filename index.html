@@ -173,11 +173,6 @@
                 <div class="mod-item m-sp" onclick="openPage('spectroscopy-page')">
                     <h2><span>MODÜL 04</span> SPECTROSCOPY</h2>
                     <p id="t-mod4-desc">Kuantum spektrum analizi, elementel yapı ve termal radyasyon dağılımı.</p>
-                </div>
-                <div class="mod-item m-sb" onclick="openPage('sandbox-page'); setTimeout(initSandbox, 100);">
-                    <h2 id="t-sb-menu-title"><span>MODÜL 05</span> TANRI MODU (SANDBOX)</h2>
-                    <p id="t-mod5-desc">Kütle, dönüş hızı ve zamanı bükerek yıldızın kaderiyle canlı olarak oyna!</p>
-                </div>
             </div>
         </div>
     </div> 
@@ -404,81 +399,7 @@
         </div>
     </div>
 
-    <div id="sandbox-page" class="page">
-        <div class="controls-row">
-            <button class="back-btn t-back-btn" onclick="openPage('landing-page')">◄ Ana Sayfaya Dön</button>
-            <div class="search-box">
-                <input type="text" id="sbInput" placeholder="Gök cismi adını giriniz (Örn: Sirius)...">
-                <button class="t-btn-analyze" onclick="analyzeSandbox()" style="background:#ff4d4d; color:#fff;">Hedefi Yükle</button>
-                <span class="loading t-loading" id="sbLoadingText" style="color:#ff4d4d;">Veri Çekiliyor...</span>
-            </div>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1 id="t-sb-title" style="color:#ff4d4d; margin:0;">🌌 Kozmik Simülatör (Tanrı Modu)</h1>
-            <h3 style="color:#fff; margin:0;">Hedef: <span id="sbTargetName" style="color:#ff4d4d;">GÜNEŞ (VARSAYILAN)</span></h3>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div id="sb-engine-container" style="width: 100%; height: 45vh; background: #000; border-radius: 12px; border: 1px solid #30363d; position: relative; overflow: hidden;">
-                 <div id="t-sb-hint" style="position: absolute; top:15px; left:15px; color:#8b949e; font-size:0.85rem; z-index:10; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;">🖱️ Mouse ile döndür ve yakınlaş</div>
-            </div>
-            <div style="background: #161b22; padding: 25px; border-radius: 12px; border: 1px solid #30363d;">
-                <div style="display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap;">
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span class="tooltip" id="t-sb-mass-hover"><span id="t-sb-mass">Kütle (M☉):</span><span class="tooltiptext" id="t-tt-mass2">Güneş Kütlesi (1 M☉ = ~2×10³⁰ kg)</span></span> <span id="sb_val_mass" style="color:#58a6ff;">1.0</span></label>
-                            <input type="range" id="sb_mass" min="0.1" max="50" step="0.1" value="1" style="width:100%; accent-color:#58a6ff;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span class="tooltip" id="t-sb-rad-hover"><span id="t-sb-rad">Yarıçap (R☉):</span><span class="tooltiptext" id="t-tt-rad2">Güneş Yarıçapı (1 R☉ = 696.340 km)</span></span> <span id="sb_val_rad" style="color:#58a6ff;">1.0</span></label>
-                            <input type="range" id="sb_rad" min="0.1" max="500" step="0.1" value="1" style="width:100%; accent-color:#58a6ff;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-temp">Yüzey Sıcaklığı (K):</span> <span id="sb_val_temp" style="color:#ffca4d;">5778</span></label>
-                            <input type="range" id="sb_temp" min="2000" max="40000" step="100" value="5778" style="width:100%; accent-color:#ffca4d;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-rot">Dönüş Hızı (km/s):</span> <span id="sb_val_rot" style="color:#9bb0ff;">2</span></label>
-                            <input type="range" id="sb_rot" min="0" max="600" step="1" value="2" style="width:100%; accent-color:#9bb0ff;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-glow">Işıma Parlaklığı:</span> <span id="sb_val_glow" style="color:#fff;">50</span></label>
-                            <input type="range" id="sb_glow" min="0" max="100" step="1" value="50" style="width:100%; accent-color:#fff;">
-                        </div>
-                    </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; border-left: 1px solid #30363d; padding-left: 20px;">
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-h">Başlangıç Hidrojen (H):</span> <span style="color:#58a6ff;">Mevcut %<span id="sb_val_h2">73.5</span></span></label>
-                            <input type="range" id="sb_h2" min="0" max="100" step="0.1" value="73.5" style="width:100%; accent-color:#58a6ff;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-he">Başlangıç Helyum (He):</span> <span style="color:#e3b341;">Mevcut %<span id="sb_val_he">24.8</span></span></label>
-                            <input type="range" id="sb_he" min="0" max="100" step="0.1" value="24.8" style="width:100%; accent-color:#e3b341;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-o">Başlangıç Oksijen (O):</span> <span style="color:#3fb950;">Mevcut %<span id="sb_val_o">0.8</span></span></label>
-                            <input type="range" id="sb_o" min="0" max="100" step="0.1" value="0.8" style="width:100%; accent-color:#3fb950;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-c">Başlangıç Karbon (C):</span> <span style="color:#ff7b54;">Mevcut %<span id="sb_val_c">0.3</span></span></label>
-                            <input type="range" id="sb_c" min="0" max="100" step="0.1" value="0.3" style="width:100%; accent-color:#ff7b54;">
-                        </div>
-                        <div>
-                            <label style="color:#8b949e; font-weight:bold; display:flex; justify-content:space-between;"><span id="t-sb-fe">Başlangıç Demir (Fe):</span> <span style="color:#8b949e;">Mevcut %<span id="sb_val_fe">0.1</span></span></label>
-                            <input type="range" id="sb_fe" min="0" max="100" step="0.1" value="0.1" style="width:100%; accent-color:#8b949e;">
-                        </div>
-                    </div>
-                </div>
-                <div style="margin-top: 25px; border-top: 1px solid #30363d; padding-top: 20px;">
-                    <label id="t-sb-time" style="color:#ff4d4d; font-size:1.3rem; font-weight:bold; display:flex; justify-content:space-between;">
-                        ⏳ Zamanı İleri Sar (Milyon Yıl): <span id="sb_val_time">0</span>
-                    </label>
-                    <input type="range" id="sb_time" min="0" max="15000" step="0.001" value="0">
-                    <h2 id="sb_fate_text" style="text-align:center; margin-top: 30px; color:#3fb950; font-family:'Courier New', Courier, monospace; font-size:1.8rem; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4);">✨ DURUM: STABİL (ANA DİZİ)</h2>
-                </div>
-            </div>
-        </div>
-    </div>
-
+       
     <script>
         const dict = {
             tr: { 
