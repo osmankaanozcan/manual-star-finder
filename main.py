@@ -5,7 +5,7 @@ import astropy.units as u
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import timedelta, datetime
+from datetime import timedelta
 from astropy.coordinates import get_body, get_sun
 from scipy.interpolate import make_interp_spline
 from astroquery.simbad import Simbad
@@ -428,7 +428,39 @@ if sonuc is not None:
     else:
         print(f"\n🔥 SICAKLIK ANALİZİ: {hedef_yazisi.upper()} için sıcaklık verisi bulunamadı.")
 
-   
+    # ======================== KÜTLE ANALİZİ ========================
+    # Ana Dizi (V) - Pecaut & Mamajek (2013), Eker et al. (2018)
+    kutle_ana_dizi = {
+        'O3': (80.0, 120.0), 'O5': (45.0, 70.0), 'O7': (25.0, 35.0), 'O9': (18.0, 22.0),
+        'B0': (14.0, 20.0), 'B2': (6.0, 8.5), 'B5': (4.0, 5.5), 'B8': (2.7, 3.3),
+        'A0': (1.96, 2.40), 'A2': (1.80, 2.15), 'A5': (1.65, 1.90), 'A7': (1.55, 1.80),
+        'F0': (1.35, 1.58), 'F2': (1.25, 1.44), 'F5': (1.15, 1.33), 'F8': (1.04, 1.16),
+        'G0': (0.98, 1.08), 'G2': (0.95, 1.05), 'G5': (0.88, 0.98), 'G8': (0.83, 0.93),
+        'K0': (0.76, 0.88), 'K2': (0.70, 0.82), 'K5': (0.60, 0.72), 'K7': (0.53, 0.65),
+        'M0': (0.46, 0.57), 'M1': (0.38, 0.49), 'M2': (0.32, 0.40), 'M3': (0.24, 0.34),
+        'M4': (0.17, 0.24), 'M5': (0.12, 0.18),
+    }
+    # Süper Dev (I) — Levesque et al. (2005), Ekström et al. (2012)
+    kutle_super_dev = {
+        'O5': (55.0, 90.0), 'O9': (25.0, 40.0),
+        'B0': (20.0, 30.0), 'B2': (16.0, 25.0), 'B5': (12.0, 18.0), 'B8': (10.0, 14.0),
+        'A0': (13.0, 18.0), 'A2': (11.0, 16.0), 'A5': (10.0, 15.0),
+        'F0': (9.0, 14.0), 'F5': (8.0, 12.0), 'F8': (7.0, 11.0),
+        'G0': (8.0, 13.0), 'G2': (8.0, 12.0), 'G5': (9.0, 14.0), 'G8': (10.0, 15.0),
+        'K0': (10.0, 16.0), 'K2': (11.0, 16.0), 'K5': (12.0, 18.0),
+        'M0': (13.0, 20.0), 'M1': (14.5, 21.0), 'M2': (16.5, 19.0), 'M3': (17.0, 25.0),
+        'M4': (20.0, 28.0), 'M5': (22.0, 30.0),
+    }
+    # Dev (III)
+    kutle_dev = {
+        'B0': (16.0, 25.0), 'B5': (5.0, 9.0),
+        'A0': (3.0, 5.0), 'A5': (2.5, 3.5),
+        'F0': (2.0, 3.0), 'F5': (1.7, 2.3),
+        'G0': (2.0, 3.0), 'G5': (1.7, 2.4), 'G8': (1.5, 2.1),
+        'K0': (1.4, 2.0), 'K2': (1.2, 1.8), 'K5': (1.0, 1.6),
+        'M0': (0.9, 1.4), 'M1': (0.8, 1.3), 'M2': (0.8, 1.2), 'M3': (0.7, 1.1), 'M5': (0.6, 1.0),
+    }
+
     if parlaklik_sinifi == 'I':
         sp_kutle_tablo = kutle_super_dev
     elif parlaklik_sinifi in ('II', 'III'):
@@ -569,20 +601,13 @@ if sonuc is not None:
         print(f"   {hedef_yazisi.upper()} için yarıçap tahmini yapılamadı.")
 
     # ======================== HAYATINI TAMAMLAMA ORANI ========================
-    # Kütle-Ömür ilişkisi (ana dizi): t ≈ (M/M☉)^(-2.5) × 10^10 yıl
-    # Evrimsel aşama tespiti: parlaklık sınıfına göre ömrün ne kadarını yaşadığını tahmin et
-    #   V   (Ana Dizi)     → Hidrojen füzyonu, ömrünün %0 – %90 arası
-    #   IV  (Alt Dev)      → Çekirdek hidrojeni azalıyor, ömrünün ~%90 – %95 arası
-    #   III (Dev)          → Hidrojen kabuğu füzyonu, ömrünün ~%95 – %98 arası
-    #   II  (Parlak Dev)   → Helyum füzyonuna geçiş, ömrünün ~%97 – %99 arası
-    #   I   (Süper Dev)    → Son evre, ömrünün ~%99 – %99.9+ arası
 
     evrim_oranlari = {
-        'V':   (0.10, 0.85),    # Ana dizi — hayatının büyük bölümü
-        'IV':  (0.88, 0.95),    # Alt dev — geçiş evresi
-        'III': (0.95, 0.98),    # Dev — kabuğa geçiş
-        'II':  (0.97, 0.99),    # Parlak dev — ileri evre
-        'I':   (0.990, 0.999),  # Süper dev — son evre
+        'V':   (0.10, 0.85),    # Ana dizi
+        'IV':  (0.88, 0.95),    # Alt dev
+        'III': (0.95, 0.98),    # Dev
+        'II':  (0.97, 0.99),    # Parlak dev
+        'I':   (0.990, 0.999),  # Süper dev
     }
 
     print(f"\n⏳ HAYAT EVRESİ ANALİZİ")
